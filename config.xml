@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<module>
+	<name>mpbutton</name>
+	<displayName><![CDATA[MP Button display]]></displayName>
+	<version><![CDATA[1.0.0]]></version>
+	<description><![CDATA[Whit this module you can dispaly a button on the front office.]]></description>
+	<author><![CDATA[Digital Solutions®]]></author>
+	<tab><![CDATA[front_office_features]]></tab>
+	<is_configurable>1</is_configurable>
+	<need_instance>1</need_instance>
+</module>
