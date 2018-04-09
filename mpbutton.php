@@ -81,7 +81,7 @@ class MpButton extends Module
 
     public function uninstall()
     {
-        return parent::uninstall() && 
+        return parent::uninstall() &&
             $this->uninstallTab($this->adminClassName);
     }
     
@@ -124,7 +124,7 @@ class MpButton extends Module
     }
     
     /**
-     * 
+     *
      * @param string $parent Parent tab name
      * @param type $class_name Class name of the module
      * @param type $name Display name of the module
@@ -164,7 +164,7 @@ class MpButton extends Module
     }
     
     /**
-     * 
+     *
      * @param string pe $class_name Class name of the module
      * @return boolean True if successfull, False otherwise
      */
@@ -185,7 +185,7 @@ class MpButton extends Module
     {
         $mpButtons = MpButtonObjectClass::getActiveButtons();
         $html = array();
-        foreach($mpButtons as $but) {
+        foreach ($mpButtons as $but) {
             if ($but->position == MpButtonObjectClass::POSITION_BOTTOM) {
                 $smarty = Context::getContext()->smarty;
                 $smarty->assign(
@@ -198,7 +198,7 @@ class MpButton extends Module
                 $html[] = $button;
             }
         }
-        print "<pre>".print_r($html,1)."</pre>";
+        
         return implode('<br>', $html);
     }
     

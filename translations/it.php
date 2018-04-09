@@ -31,6 +31,8 @@ $_MODULE['<{mpbutton}prestashop>adminmpbutton_630f6dc397fe74e52d5189e2c80f282b']
 $_MODULE['<{mpbutton}prestashop>adminmpbutton_11cb79e681ac59c9880abe41073f9505'] = 'Lista bottoni';
 $_MODULE['<{mpbutton}prestashop>adminmpbutton_d3b206d196cd6be3a2764c1fb90b200f'] = 'Elimina la selezione';
 $_MODULE['<{mpbutton}prestashop>adminmpbutton_6de84e98a596482d588b2a68b0313ff0'] = 'Eliminare gli elementi selezionati?';
+$_MODULE['<{mpbutton}prestashop>adminmpbutton_d0ca0a44910489f19bd724f2742b3f46'] = 'Aggiungi un nuovo bottone';
+$_MODULE['<{mpbutton}prestashop>adminmpbutton_e4d448702c13e08b8008ca891960f4d0'] = 'Torna al pannello di controllo';
 $_MODULE['<{mpbutton}prestashop>adminmpbutton_7dce122004969d56ae2e0245cb754d35'] = 'Modifica';
 $_MODULE['<{mpbutton}prestashop>adminmpbutton_a004901b5e194648ff6f48142c53c951'] = 'Errore nella lettura dei dati: %d, %s';
 $_MODULE['<{mpbutton}prestashop>adminmpbutton_490aa6e856ccf208a054389e47ce0d06'] = 'Id';
@@ -41,3 +43,5 @@ $_MODULE['<{mpbutton}prestashop>adminmpbutton_06df33001c1d7187fdd81ea1f5b277aa']
 $_MODULE['<{mpbutton}prestashop>adminmpbutton_94eb35cb2428583cff256b3af9cbe9f3'] = 'Id del bottone non valido';
 $_MODULE['<{mpbutton}prestashop>configure_a00f225262ea9c1ef6f6931083a5a191'] = 'MP Mostra Bottone';
 $_MODULE['<{mpbutton}prestashop>script_902b0d55fddef6f8d651fe1035b7d4bd'] = 'Errore!';
+$_MODULE['<{mpbutton}prestashop>script_4e3b32dcdfcf64cf8358f6298fb5249a'] = 'Errore durante la lettura dei valori';
+$_MODULE['<{mpbutton}prestashop>script_c2759effffc94bb9acc71d69fe3e8a1f'] = 'ERRORE';

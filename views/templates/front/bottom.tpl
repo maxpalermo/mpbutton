@@ -27,7 +27,7 @@
         z-index: 999999;
         position: fixed;
         left: 0;
-        bottom: {$offset}px;
+        bottom: {$offset|escape:'htmlall':'UTF-8'}px;
         width: 100%;
         text-align: center;
     }

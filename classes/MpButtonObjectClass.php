@@ -96,7 +96,8 @@ class MpButtonObjectClass extends ObjectModelCore
         ),
     );
     
-    public function __construct($id = null, $id_lang = null, $id_shop = null) {
+    public function __construct($id = null, $id_lang = null, $id_shop = null)
+    {
         $context = ContextCore::getContext();
         if ((int)$id_shop == 0) {
             $context->shop->id;
@@ -142,7 +143,6 @@ class MpButtonObjectClass extends ObjectModelCore
                 PrestaShopLoggerCore::addLog($ex->getMessage());
                 return true;
             }
-                
         }
         
         return true;
@@ -157,7 +157,7 @@ class MpButtonObjectClass extends ObjectModelCore
             return array();
         }
         $output = array();
-        foreach($result as $id) {
+        foreach ($result as $id) {
             $but = new MpButtonObjectClass($id);
             $output[] = $but;
         }

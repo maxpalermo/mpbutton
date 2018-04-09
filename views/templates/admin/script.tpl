@@ -35,12 +35,12 @@
             type: 'POST',
             dataType: 'json',
             useDefaultXhrHeader: false,
-            url: '{$ajax_url}',
+            url: '{$ajax_url|escape:'htmlall':'UTF-8'}',
             data: 
             {
                 ajax: true,
                 action: 'toggleStatus',
-                token: '{$ajax_token}',
+                token: '{$ajax_token|escape:'htmlall':'UTF-8'}',
                 id_mp_button: $(button).attr('value')
             }
         })
@@ -59,7 +59,7 @@
             }
         })
         .fail(function(){
-            jAlert("{l s='Error during getting values.' mod='mpstock'}", '{l s='FAIL' mod='mpstock'}');
+            jAlert("{l s='Error during getting values.' mod='mpbutton'}", '{l s='FAIL' mod='mpbutton'}');
         });
     }
 </script>

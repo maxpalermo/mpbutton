@@ -37,7 +37,7 @@ class AdminMpButtonController extends ModuleAdminController
     protected $local_path;
     
     public function __construct()
-    {   
+    {
         $this->bootstrap = true;
         $this->context = Context::getContext();
         $this->className = 'AdminMpButton';
@@ -58,16 +58,16 @@ class AdminMpButtonController extends ModuleAdminController
         require_once $this->module->getPath().'classes/MpButtonObjectClass.php';
         
         if (Tools::isSubmit('ajax')) {
-            $action = 'ajaxProcess'.ucfirst(Tools::getValue('action'));
+            $action = 'ajaxProcess'.Tools::ucfirst(Tools::getValue('action'));
             $this->$action();
             $this->content = $this->initList().$this->initScript();
         } elseif (Tools::isSubmit('submitButtonSave')) {
-            if(!$this->validateForm()) {
+            if (!$this->validateForm()) {
                 $this->errors[] = sprintf(
                     $this->l('Error saving data: %d, %s'),
                     Db::getInstance()->getNumberError(),
                     Db::getInstance()->getMsgError()
-                );  
+                );
             } else {
                 $this->confirmations[] = $this->l('Button saved');
             }
@@ -138,61 +138,62 @@ class AdminMpButtonController extends ModuleAdminController
     
     protected function getFormFields()
     {
-        $popup_preview_link = '<div class="form-group"><button class="btn btn-default"><i class="icon fa-eye"></i></button></div>';
+        $popup_preview_link =
+            '<div class="form-group"><button class="btn btn-default"><i class="icon fa-eye"></i></button></div>';
         $fields_form = array(
-			'form' => array(
-				'legend' => array(
-					'title' => $this->l('Button properties'),
-					'icon' => 'icon-edit',
-					'badge' => 'icon-edit',
-				),
-				'input' => array(
-					array(
-						'type' => 'hidden',
-						'name' => 'hidden_id_mp_button',
-					),
-					array(
-						'type' => 'html',
-						'name' =>  $popup_preview_link,
-					),
-					array(
-						'type' => 'switch',
-						'label' => $this->l('Is active?'),
-						'name' => 'input_switch_is_active',
-						'is_bool' => true,
-						'values' => array(
-							array(
-								'id' => 'active_on',
-								'value' => 1,
-								'label' => $this->l('Yes')
-							),
-							array(
-								'id' => 'active_off',
-								'value' => 0,
-								'label' => $this->l('No')
-							)
-						),
-					),
-					array(
-						'type' => 'text',
-						'label' => $this->l('Title'),
-						'name' => 'input_text_title',
-						'class' => 'text-strong',
-					),
-					array(
-						'type' => 'textarea',
-						'label' => $this->l('Content'),
-						'name' => 'input_text_content',
-						'cols' => 40,
-						'rows' => 10,
-						'class' => 'rte',
-						'autoload_rte' => true,
-					),
+            'form' => array(
+                'legend' => array(
+                    'title' => $this->l('Button properties'),
+                    'icon' => 'icon-edit',
+                    'badge' => 'icon-edit',
+                ),
+                'input' => array(
                     array(
-						'type' => 'select',
-						'label' => $this->l('Position'),
-						'name' => 'input_select_position',
-						'options' => array(
+                        'type' => 'hidden',
+                        'name' => 'hidden_id_mp_button',
+                    ),
+                    array(
+                        'type' => 'html',
+                        'name' => $popup_preview_link,
+                    ),
+                    array(
+                        'type' => 'switch',
+                        'label' => $this->l('Is active?'),
+                        'name' => 'input_switch_is_active',
+                        'is_bool' => true,
+                        'values' => array(
+                            array(
+                                'id' => 'active_on',
+                                'value' => 1,
+                                'label' => $this->l('Yes')
+                            ),
+                            array(
+                                'id' => 'active_off',
+                                'value' => 0,
+                                'label' => $this->l('No')
+                            )
+                        ),
+                    ),
+                    array(
+                        'type' => 'text',
+                        'label' => $this->l('Title'),
+                        'name' => 'input_text_title',
+                        'class' => 'text-strong',
+                    ),
+                    array(
+                        'type' => 'textarea',
+                        'label' => $this->l('Content'),
+                        'name' => 'input_text_content',
+                        'cols' => 40,
+                        'rows' => 10,
+                        'class' => 'rte',
+                        'autoload_rte' => true,
+                    ),
+                    array(
+                        'type' => 'select',
+                        'label' => $this->l('Position'),
+                        'name' => 'input_select_position',
+                        'options' => array(
                             'query' => array(
                                 array(
                                     'id' => MpButtonObjectClass::POSITION_TOP,
@@ -218,29 +219,29 @@ class AdminMpButtonController extends ModuleAdminController
                             'id' => 'id',
                             'name' => 'value',
                         )
-					),
+                    ),
                     array(
-						'type' => 'text',
-						'label' => $this->l('Offset'),
-						'name' => 'input_text_offset',
-						'class' => 'text-strong text-right fixed-width-sm',
-					),
-				),
-				'submit' => array(
-					'title' => $this->l('Save'),
-					'name' => 'submitButtonSave',
-					'class' => 'btn btn-default pull-right'
-				),
-				'buttons' => array(
-					array(
-						'href' => $this->context->link->getAdminLink($this->className),
-						'title' => $this->l('Back to list'),
-						'icon' => 'process-icon-back'
-					),
-				),
-			),
-		);
-        
+                        'type' => 'text',
+                        'label' => $this->l('Offset'),
+                        'name' => 'input_text_offset',
+                        'class' => 'text-strong text-right fixed-width-sm',
+                    ),
+                ),
+                'submit' => array(
+                    'title' => $this->l('Save'),
+                    'name' => 'submitButtonSave',
+                    'class' => 'btn btn-default pull-right'
+                ),
+                'buttons' => array(
+                    array(
+                        'href' => $this->context->link->getAdminLink($this->className),
+                        'title' => $this->l('Back to list'),
+                        'icon' => 'process-icon-back'
+                    ),
+                ),
+            ),
+        );
+
         return $fields_form;
     }
     
@@ -270,7 +271,6 @@ class AdminMpButtonController extends ModuleAdminController
         }
     }
 
-
     private function initList()
     {
         $currentIndex = $this->context->link->getAdminLink($this->className, false);
@@ -284,7 +284,7 @@ class AdminMpButtonController extends ModuleAdminController
             'delete' => array(
                 'text' => $this->l('Delete selected'),
                 'confirm' => $this->l('Delete selected elements?'),
-                'icon' => 'process-icon-delete',
+                'icon' => 'icon-trash',
             ),
         );
         $list->show_toolbar = true;
@@ -294,13 +294,13 @@ class AdminMpButtonController extends ModuleAdminController
         $list->simple_header = false;
         $list->toolbar_btn = array(
             'new' => array(
-                'desc' => 'Add new button',
+                'desc' => $this->l('Add new button'),
                 'icon' => 'process-icon-add',
                 'href' => $this->context->link->getAdminLink($this->className).'&submitNewButton',
                 'token' => $token,
             ),
             'back' => array(
-                'desc' => 'Back to dashboard',
+                'desc' => $this->l('Back to dashboard'),
                 'icon' => 'process-icon-back',
                 'href' => $this->context->link->getAdminLink('AdminDashboard'),
                 'token' => '',
@@ -321,7 +321,7 @@ class AdminMpButtonController extends ModuleAdminController
             ->orderBy('title');
         $result = $db->executeS($sql);
         if ($result) {
-            foreach($result as &$row) {
+            foreach ($result as &$row) {
                 $id = (int)$row['id_mp_button'];
                 $row['icon'] = '<i class="icon '.$row['icon'].'"></i>';
                 $row['is_active'] = $row['is_active']==1?$this->toggle(true, $id):$this->toggle(false, $id);
@@ -432,7 +432,9 @@ class AdminMpButtonController extends ModuleAdminController
             exit();
         }
         $db = Db::getInstance();
-        $result = $db->execute('update '._DB_PREFIX_.'mp_button set is_active=NOT is_active where id_mp_button='.(int)$id);
+        $result = $db->execute(
+            'update '._DB_PREFIX_.'mp_button set is_active=NOT is_active where id_mp_button='.(int)$id
+        );
         if (!$result) {
             print Tools::jsonEncode(
                 array(
@@ -492,7 +494,7 @@ class AdminMpButtonController extends ModuleAdminController
         if (!$result) {
             return array();
         }
-        $selected = explode(',',Tools::getValue('input_select_categories', ''));
+        $selected = explode(',', Tools::getValue('input_select_categories', ''));
         foreach ($result as $row) {
             $is_selected = in_array($row['id'], $selected);
             $output[] = array(
@@ -502,40 +504,6 @@ class AdminMpButtonController extends ModuleAdminController
             );
         }
         return $output;
-    }
-    
-    public function getPositions()
-    {
-        $output = array(
-            array(
-                'id'=>'top',
-                'name'=>'top'
-            ),
-            array(
-                'id'=>'left',
-                'name'=>'left'
-            ),
-            array(
-                'id'=>'right',
-                'name'=>'right'
-            ),
-            array(
-                'id'=>'bottom',
-                'name'=>'bottom'
-            ),
-            array(
-                'id'=>'fixed-top',
-                'name'=>'fixed-top'
-            ),
-            array(
-                'id'=>'fixed-bottom',
-                'name'=>'fixed-bottom'
-            ),
-            array(
-                'id'=>'popup',
-                'name'=>'popup'
-            ),
-        );
     }
     
     public function getManufacturers()
@@ -551,7 +519,7 @@ class AdminMpButtonController extends ModuleAdminController
         if (!$result) {
             return array();
         }
-        $selected = explode(',',Tools::getValue('input_select_manufacturers', ''));
+        $selected = explode(',', Tools::getValue('input_select_manufacturers', ''));
         foreach ($result as $row) {
             $is_selected = in_array($row['id'], $selected);
             $output[] = array(
@@ -576,7 +544,7 @@ class AdminMpButtonController extends ModuleAdminController
         if (!$result) {
             return array();
         }
-        $selected = explode(',',Tools::getValue('input_select_manufacturers', ''));
+        $selected = explode(',', Tools::getValue('input_select_manufacturers', ''));
         foreach ($result as $row) {
             $is_selected = in_array($row['id'], $selected);
             $output[] = array(
