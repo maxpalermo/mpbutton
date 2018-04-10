@@ -158,7 +158,7 @@ class MpButtonObjectClass extends ObjectModelCore
         }
         $output = array();
         foreach ($result as $id) {
-            $but = new MpButtonObjectClass($id);
+            $but = new MpButtonObjectClass($id['id_mp_button']);
             $output[] = $but;
         }
         return $output;

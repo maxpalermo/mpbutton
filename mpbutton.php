@@ -185,18 +185,36 @@ class MpButton extends Module
     {
         $mpButtons = MpButtonObjectClass::getActiveButtons();
         $html = array();
+        $smarty = Context::getContext()->smarty;
+            
         foreach ($mpButtons as $but) {
-            if ($but->position == MpButtonObjectClass::POSITION_BOTTOM) {
-                $smarty = Context::getContext()->smarty;
-                $smarty->assign(
-                    array(
-                        'content' => $but->content,
-                        'offset' => $but->offset
-                    )
-                );
-                $button = $smarty->fetch($this->getPath().'views/templates/front/bottom.tpl');
-                $html[] = $button;
+            $smarty->assign(
+                array(
+                    'content' => $but->content,
+                    'offset' => $but->offset
+                )
+            );
+            switch ($but->position) {
+                case MpButtonObjectClass::POSITION_TOP:
+                    $button = $smarty->fetch($this->getPath().'views/templates/front/top.tpl');
+                    break;
+                case MpButtonObjectClass::POSITION_BOTTOM:
+                    $button = $smarty->fetch($this->getPath().'views/templates/front/bottom.tpl');
+                    break;
+                case MpButtonObjectClass::POSITION_LEFT:
+                    $button = $smarty->fetch($this->getPath().'views/templates/front/left.tpl');
+                    break;
+                case MpButtonObjectClass::POSITION_RIGHT:
+                    $button = $smarty->fetch($this->getPath().'views/templates/front/right.tpl');
+                    break;
+                case MpButtonObjectClass::POSITION_POPUP:
+                    $button = $smarty->fetch($this->getPath().'views/templates/front/center.tpl');
+                    break;
+                default:
+                    $button = $smarty->fetch($this->getPath().'views/templates/front/center.tpl');
+                    break;
             }
+            $html[] = $button;
         }
         
         return implode('<br>', $html);

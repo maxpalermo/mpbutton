@@ -13,6 +13,7 @@ $_MODULE['<{mpbutton}prestashop>mpbutton_f7b594bb4b4130b997b8e0be39e368b2'] = 'E
 $_MODULE['<{mpbutton}prestashop>mpbutton_01b1f90071add0165ac52138b6921b21'] = 'Impossibile rimuovere il menu';
 $_MODULE['<{mpbutton}prestashop>adminmpbutton_ac0045d18a3202ac8227ce07682abbab'] = 'Errore nel salvataggio dei dati: %d, %s';
 $_MODULE['<{mpbutton}prestashop>adminmpbutton_b06dd6ab42daed8f47579911a4a6d9c4'] = 'Bottone salvato';
+$_MODULE['<{mpbutton}prestashop>adminmpbutton_fdce220831b2dadafc28963960f24333'] = 'Il bottone con id %d è stato rimosso.';
 $_MODULE['<{mpbutton}prestashop>adminmpbutton_68884bba04c8f70e30b4bec0bdb38393'] = 'Proprietà del bottone';
 $_MODULE['<{mpbutton}prestashop>adminmpbutton_190c44b14d46dd93039b4e06947483c9'] = 'É attivo?';
 $_MODULE['<{mpbutton}prestashop>adminmpbutton_93cba07454f06a4a960172bbd6e2a435'] = 'Si';

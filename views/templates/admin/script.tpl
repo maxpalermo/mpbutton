@@ -53,9 +53,9 @@
                 return false;
             }
             if (result.toggle === 1) {
-                $(button).closest('tr').find('td:nth-child(4)').find('i').removeClass('icon-times').addClass('icon-check').css('color', '#72C279');
+                $(button).closest('tr').find('.ajax-toggle').removeClass('icon-times').addClass('icon-check').css('color', '#72C279');
             } else {
-                $(button).closest('tr').find('td:nth-child(4)').find('i').removeClass('icon-check').addClass('icon-times').css('color', '#C27279');
+                $(button).closest('tr').find('.ajax-toggle').removeClass('icon-check').addClass('icon-times').css('color', '#C27279');
             }
         })
         .fail(function(){

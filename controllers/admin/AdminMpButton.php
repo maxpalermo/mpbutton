@@ -61,6 +61,8 @@ class AdminMpButtonController extends ModuleAdminController
             $action = 'ajaxProcess'.Tools::ucfirst(Tools::getValue('action'));
             $this->$action();
             $this->content = $this->initList().$this->initScript();
+        } elseif (Tools::isSubmit('submitBulkdeletemp_button')) {
+            $this->deleteButtons();
         } elseif (Tools::isSubmit('submitButtonSave')) {
             if (!$this->validateForm()) {
                 $this->errors[] = sprintf(
@@ -71,14 +73,28 @@ class AdminMpButtonController extends ModuleAdminController
             } else {
                 $this->confirmations[] = $this->l('Button saved');
             }
-            $this->content = $this->initList().$this->initScript();
         } elseif (Tools::isSubmit('submitNewButton')) {
             $this->content = $this->initForm();
-        } else {
-            $this->content = $this->initList().$this->initScript();
+            parent::initContent();
+            return;
         }
         
+        $this->content = $this->initList().$this->initScript();
         parent::initContent();
+    }
+    
+    protected function deleteButtons()
+    {
+        $ids = Tools::getValue('mp_buttonBox', array());
+        if ($ids) {
+            foreach ($ids as $id) {
+                Db::getInstance()->delete('mp_button', 'id_mp_button='.(int)$id);
+                $this->confirmations[] = sprintf(
+                    $this->l('Button with id %d has been removed.'),
+                    $id
+                );
+            }
+        }
     }
     
     protected function validateForm()
@@ -348,7 +364,7 @@ class AdminMpButtonController extends ModuleAdminController
         if ($is_active) {
             $btn = $this->createElement(
                 'i',
-                'icon icon-check',
+                'ajax-toggle icon icon-check',
                 'color: #72C279; cursor: pointer;',
                 $value,
                 'javascript:mpbutton_ToggleActive(this)'
@@ -356,7 +372,7 @@ class AdminMpButtonController extends ModuleAdminController
         } else {
             $btn = $this->createElement(
                 'i',
-                'icon icon-times',
+                'ajax-toggle icon icon-times',
                 'color: #C27279; cursor: pointer;',
                 $value,
                 'javascript:mpbutton_ToggleActive(this)'
@@ -395,6 +411,12 @@ class AdminMpButtonController extends ModuleAdminController
             ),
             'title' => array(
                 'title' => $this->l('Title'),
+                'align' => 'text-left',
+                'width' => 'auto',
+                'search' => false,
+            ),
+            'position' => array(
+                'title' => $this->l('Position'),
                 'align' => 'text-left',
                 'width' => 'auto',
                 'search' => false,
