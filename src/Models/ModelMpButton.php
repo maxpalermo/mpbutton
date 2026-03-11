@@ -24,7 +24,6 @@ namespace MpSoft\MpButton\Models;
 use \Context;
 use \Db;
 use \DbQuery;
-use \Product;
 use \Tools;
 use \Validate;
 
@@ -386,16 +385,44 @@ class ModelMpButton extends \ObjectModel
             return [];
         }
 
-        $id_lang = (int) Context::getContext()->language->id;
         $controller = pSQL($controller);
+        $id_lang = (int) Context::getContext()->language->id;
         $id = 0;
+        $db = Db::getInstance();
+        $pfx = _DB_PREFIX_;
+        $primary = self::$definition['primary'];
+        $table = self::$definition['table'];
+
+        $sql = "
+            SELECT
+                {$primary} 
+            FROM
+                {$pfx}{$table} 
+            WHERE
+                active=1 
+            AND
+                (date_start is null or date_start < NOW() or date_start = NOW())
+            AND
+                (date_end is null or date_end > NOW() or date_start = NOW())
+            AND
+                (position={$position})
+        ";
+
         switch ($controller) {
+            case 'cart':
+                break;
             case 'category':
                 $id = Tools::getValue('id_category');
+                $category = new \Category($id, $id_lang);
+                if (!Validate::isLoadedObject($category)) {
+                    return [];
+                }
+
+                $sql .= '    AND' . self::findInSet([$id], 'categories');
                 break;
             case 'product':
                 $id = Tools::getValue('id_product');
-                $product = new Product($id, false, $id_lang);
+                $product = new \Product($id, false, $id_lang);
                 if (!Validate::isLoadedObject($product)) {
                     return [];
                 }
@@ -406,84 +433,47 @@ class ModelMpButton extends \ObjectModel
                     $id_attribute[] = $attribute['id_attribute'];
                 }
                 $id_attribute = array_unique($id_attribute);
+                sort($id_attribute);
 
                 $features = $product->getFeatures();
                 $id_feature_value = [];
                 foreach ($features as $feature) {
                     $id_feature_value[] = $feature['id_feature_value'];
                 }
+                sort($id_feature_value);
 
                 $id_categories = $product->getCategories();
+                sort($id_categories);
 
+                $sql .= '    AND' . self::findInSet([$id], 'products');
                 break;
             default:
                 $id = 0;
         }
 
-        $id_lang = (int) Context::getContext()->language->id;
-        $db = Db::getInstance();
-        $pfx = _DB_PREFIX_;
-        $primary = self::$definition['primary'];
-        $table = self::$definition['table'];
-
-        $sql = "
-            select
-                {$primary} 
-            from
-                {$pfx}{$table} 
-            where
-                active=1 
-            and
-                (date_start is null or date_start < NOW() or date_start = NOW())
-            and
-                (date_end is null or date_end > NOW() or date_start = NOW())
-            and
-                position={$position}
-        ";
-
-        switch ($controller) {
-            case 'category':
-                $sql .= "
-                    and
-                        (FIND_IN_SET('{$id}', categories) > 0 or categories = '' or categories is null)
-                ";
-                break;
-            case 'product':
-                $sql .= "
-                    and
-                        (FIND_IN_SET('{$id}', products) > 0 or products = '' or products is null)
-                ";
-                break;
-            default:
-                break;
-        }
-
-        $OR = '';
-        if (isset($id_attribute) && $id_attribute) {
-            $OR .= self::findInSet($id_attribute, 'attributes');
-        }
-
-        if (isset($id_feature_value) && $id_feature_value) {
-            $OR .= self::findInSet($id_attribute, 'features');
-        }
-
-        if (isset($id_categories) && $id_categories) {
-            $OR .= self::findInSet($id_attribute, 'categories');
-        }
-
-        if ($OR) {
-            $OR = rtrim($OR, 'OR ');
-            $sql .= "
-                and 
-                ({$OR})
-            ";
-        }
-
         if ($controller) {
-            $sql .= "
-                and
-                    (FIND_IN_SET('{$controller}', pages) > 0 or pages = '' or pages is null)
-            ";
+            $sql .= "\n\t    AND" . self::findInSet([$controller], 'pages');
+        }
+
+        $sub = '';
+
+        if ($controller == 'product') {
+            if (isset($id_attribute) && $id_attribute) {
+                $sub .= "\n\t    " . self::findInSet($id_attribute, 'attributes', false) . ' OR ';
+            }
+
+            if (isset($id_feature_value) && $id_feature_value) {
+                $sub .= "\n\t    " . self::findInSet($id_feature_value, 'features', false) . ' OR ';
+            }
+
+            if (isset($id_categories) && $id_categories) {
+                $sub .= "\n\t    " . self::findInSet($id_categories, 'categories', false) . 'OR ';
+            }
+
+            if ($sub) {
+                $sub = rtrim($sub, ' OR ');
+                $sql .= "AND ({$sub})";
+            }
         }
 
         $sql .= '
@@ -497,11 +487,15 @@ class ModelMpButton extends \ObjectModel
 
         try {
             $result = $db->executeS($sql);
+
+            // "<hr><pre>{$sql};</pre>";
+            // echo '<pre>TOTALE: ' . count($result) . '</pre>';
         } catch (\Throwable $th) {
-            // \PrestaShopLogger::addLog('[' . $th->getMessage() . ',' . $th->getFile() . ',' . $th->getLine() . ']: ' . $sql);
-            // \PrestaShopLogger::addLog('ATTR:' . $pattern_attributes . ', FEAT: ' . $pattern_features . ', CAT: ' . $pattern_categories);
             $result = [];
-            exit($sql);
+            exit("
+                <div class='alert alert-danger'>{$th->getMessage()}</div>
+                <pre>{$sql}</pre>
+            ");
         }
         if (!$result) {
             return [];
@@ -516,16 +510,20 @@ class ModelMpButton extends \ObjectModel
         return $output;
     }
 
-    private static function findInSet($set, $field)
+    private static function findInSet($set, $field, $checkNull = true)
     {
         $out = '';
         foreach ($set as $item) {
-            $out .= "FIND_IN_SET('{$item}', `{$field}`) > 0 OR ";
+            $out .= "\n\t\t\tFIND_IN_SET('{$item}', `{$field}`) > 0 OR ";
         }
 
         $out = rtrim($out, 'OR ');
 
-        return "({$out} or `{$field}` = '' OR `{$field}` is null) OR ";
+        if ($checkNull) {
+            return "\n\t\t({$out} OR `{$field}` = '' OR `{$field}` is null\n\t\t)";
+        }
+
+        return "\n\t\t({$out})";
     }
 
     public static function getByPosition($position)
