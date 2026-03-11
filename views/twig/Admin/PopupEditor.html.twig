@@ -1,0 +1,543 @@
+<style>
+    :root {
+        --color-primary: #4f46e5;
+        --color-primary-hover: #4338ca;
+        --color-success: #10b981;
+        --color-success-hover: #059669;
+        --color-warning: #f59e0b;
+        --color-warning-hover: #d97706;
+        --color-danger: #ef4444;
+        --color-danger-hover: #dc2626;
+        --color-info: #4586ef;
+        --color-info-hover: #5782dd;
+        --color-disabled: #9ca3af;
+        --color-disabled-bg: #f3f4f6;
+        --color-text-primary: #111827;
+        --color-text-secondary: #6b7280;
+        --color-border: #e5e7eb;
+        --color-bg-light: #f9fafb;
+        --color-gray-100: #d0d0d0;
+        --color-gray-200: #b0b0b0;
+        --color-gray-300: #909090;
+        --color-gray-400: #505050;
+        --color-gray-500: #202020;
+    }
+
+    .btn-default {
+        background-color: var(--color-bg-light) !important;
+        color: var(--color-text-secondary) !important;
+        border: 1px solid var(--color-gray-300) !important;
+    }
+
+    .btn-default:hover {
+        color: var(--color-info-hover) !important;
+    }
+
+    .btn-default:focus-within {
+        color: var(--color-info) !important;
+    }
+
+    button[data-lang-id].is-active {
+        background-color: var(--color-info) !important;
+        border-color: var(--color-info-hover) !important;
+        color: #fff !important;
+    }
+</style>
+
+<div class="panel">
+    <div class="panel-heading">
+        <span class="material-icons">wysiwyg</span>
+        <span>Editor Popup</span>
+    </div>
+    <div class="panel-body">
+        <div class="btn-group" id="btn-navbar">
+            <button class="btn btn-default" type="button" data-content="content">
+                <span class="material-icons">filter</span>
+                <span>Contenuto</span>
+            </button>
+            <button class="btn btn-default" type="button" data-content="timer">
+                <span class="material-icons">timer</span>
+                <span>Tempistiche</span>
+            </button>
+            <button class="btn btn-default" type="button" data-content="visibility">
+                <span class="material-icons">visibility</span>
+                <span>Mostra a</span>
+            </button>
+            <button class="btn btn-default" type="button" data-content="categories">
+                <span class="material-icons">category</span>
+                <span>Categorie</span>
+            </button>
+            <button class="btn btn-default" type="button" data-content="features">
+                <span class="material-icons">apps</span>
+                <span>Caratteristiche</span>
+            </button>
+            <button class="btn btn-default" type="button" data-content="attributes">
+                <span class="material-icons">description</span>
+                <span>Attributi</span>
+            </button>
+        </div>
+    </div>
+    <div class="panel-body" id="data-content">
+        <!--dynamic content-->
+    </div>
+    <div class="panel-footer" id="panel-footer">
+        <button class="btn btn-default pull-right" type="button" data-action="save">
+            <span class="material-icons">save</span>
+            <span>Salva</span>
+        </button>
+        <button class="btn btn-default pull-right" type="button" data-action="back">
+            <span class="material-icons">arrow_back</span>
+            <span>Indietro</span>
+        </button>
+    </div>
+</div>
+
+<script src="{{ asset("js/Tree.js") }}"></script>
+
+<script>
+    const idLang = "{{ idLang }}";
+    const idPopup = "{{ idPopup }}";
+
+    let currentLangId = idLang;
+    let currentSection = "content";
+    let baseline = {
+        active: null,
+        title: "",
+        content: "",
+    };
+    let isDirty = false;
+
+    function setDirty(value) {
+        isDirty = value;
+    }
+
+    function getActiveValue() {
+        const on = document.getElementById("popup-active-on");
+        const off = document.getElementById("popup-active-off");
+        if (on && on.checked) return 1;
+        if (off && off.checked) return 0;
+        return null;
+    }
+
+    function getTitleValue() {
+        const titleEl = document.getElementById("popup-title");
+        return titleEl ? titleEl.value : "";
+    }
+
+    function getEditorContent() {
+        const editor = tinymce.get("popup-content");
+        if (editor) {
+            return editor.getContent();
+        }
+        const textarea = document.getElementById("popup-content");
+        return textarea ? textarea.value : "";
+    }
+
+    function hasUnsavedChanges() {
+        if (baseline.active === null) {
+            return false;
+        }
+
+        const activeNow = getActiveValue();
+        const titleNow = getTitleValue();
+        const contentNow = getEditorContent();
+
+        return activeNow !== baseline.active || titleNow !== baseline.title || contentNow !== baseline.content;
+    }
+
+    function syncBaselineFromDom() {
+        baseline = {
+            active: getActiveValue(),
+            title: getTitleValue(),
+            content: getEditorContent(),
+        };
+        setDirty(false);
+    }
+
+    function highlightLanguageButton(langId) {
+        const buttons = document.querySelectorAll("button[data-lang-id]");
+        buttons.forEach((b) => {
+            b.classList.toggle("is-active", b.dataset.langId === String(langId));
+        });
+    }
+
+    function attachDirtyListeners() {
+        const titleEl = document.getElementById("popup-title");
+        if (titleEl) {
+            titleEl.addEventListener("input", () => setDirty(true));
+        }
+
+        const on = document.getElementById("popup-active-on");
+        const off = document.getElementById("popup-active-off");
+        if (on) on.addEventListener("change", () => setDirty(true));
+        if (off) off.addEventListener("change", () => setDirty(true));
+
+        const editor = tinymce.get("popup-content");
+        if (editor) {
+            editor.on("change input undo redo", () => setDirty(true));
+        }
+    }
+
+    async function fetchAdmin(action, params = {}) {
+        const endpoint = "{{ endpoint | raw }}";
+        const formData = new FormData();
+        formData.append("ajax", 1);
+        formData.append("action", action);
+
+        Object.entries(params).forEach(([key, value]) => {
+            formData.append(key, value);
+        });
+
+        const response = await fetch(endpoint, {
+            method: "post",
+            body: formData,
+        });
+
+        if (!response.ok) {
+            showErrorMessage("Errore nella chiamata API");
+            return false;
+        }
+
+        const data = await response.json();
+
+        return data;
+    }
+
+    function getMultiSelectValues(selectId) {
+        const el = document.getElementById(selectId);
+        if (!el) return [];
+        return Array.from(el.selectedOptions || []).map((o) => o.value);
+    }
+
+    function collectSectionPayload(section) {
+        if (section === "content") {
+            return {
+                active: getActiveValue(),
+                title: getTitleValue(),
+                content: getEditorContent(),
+                position: document.getElementById("popup-position")?.value ?? null,
+                priority: document.getElementById("popup-priority")?.value ?? null,
+            };
+        }
+
+        if (section === "timer") {
+            return {
+                delay: document.getElementById("popup-delay")?.value ?? null,
+                expire: document.getElementById("popup-expire")?.value ?? null,
+                date_start: document.getElementById("popup-date_start")?.value ?? null,
+                date_end: document.getElementById("popup-date_end")?.value ?? null,
+            };
+        }
+
+        if (section === "visibility") {
+            return {
+                customer_groups: getMultiSelectValues("popup-customer_groups"),
+                pages: getMultiSelectValues("popup-pages"),
+                manufacturers: getMultiSelectValues("popup-manufacturers"),
+                suppliers: getMultiSelectValues("popup-suppliers"),
+                products: getMultiSelectValues("popup-products"),
+            };
+        }
+
+        if (section === "categories") {
+            const tree = document.getElementById("popup-categories");
+            return {
+                categories: tree ? tree.getSelectedValues() : [],
+            };
+        }
+
+        if (section === "features") {
+            const tree = document.getElementById("popup-features");
+            return {
+                features: tree ? tree.getSelectedValues() : [],
+            };
+        }
+
+        if (section === "attributes") {
+            const tree = document.getElementById("popup-attributes");
+            return {
+                attributes: tree ? tree.getSelectedValues() : [],
+            };
+        }
+
+        return {};
+    }
+
+    async function saveCurrentSection() {
+        const payload = collectSectionPayload(currentSection);
+        const res = await fetchAdmin("saveSection", {
+            id: idPopup,
+            idLang: currentLangId,
+            section: currentSection,
+            data: JSON.stringify(payload),
+        });
+
+        if (!res || !res.success) {
+            if (typeof showErrorMessage === "function") {
+                showErrorMessage(res?.message || "Errore nel salvataggio");
+            } else {
+                alert(res?.message || "Errore nel salvataggio");
+            }
+            return false;
+        }
+
+        if (typeof showSuccessMessage === "function") {
+            showSuccessMessage("Salvato");
+        }
+
+        if (currentSection === "content") {
+            syncBaselineFromDom();
+        }
+
+        setDirty(false);
+
+        //Se l'id == 0 allora per evitare di salvare nuovi record invece di aggiornare l'ultimo, ricarico la pagina con il nuovo id
+        if (idPopup == 0) {
+            const newId = res.id;
+            const u = new URL(window.location.href);
+            
+            u.searchParams.set('id', String(newId));
+            window.location.href = u.toString();
+
+        }
+
+        return true;
+    }
+
+    async function showSection(id, section, idLangParam = 0) {
+        if (!idLangParam) {
+            idLangParam = idLang;
+        }
+
+        currentSection = section;
+
+        const data = await fetchAdmin("showSection", { id: id, idLang: idLangParam, section: section });
+        const body = document.getElementById("data-content");
+
+        body.innerHTML = data.html || `<div class="alert alert-warning">Errore nella chiamata API</div>`;
+
+        if (section == "content") {
+            initMce();
+            if (idLangParam) {
+                await getContent(idLangParam);
+            }
+        }
+
+        if (section=="categories") {
+            initCategoriesTree();
+        }
+
+        if (section=="features") {
+            initFeaturesTree();
+        }
+
+        if (section=="attributes") {
+            initAttributesTree();
+        }
+
+    }
+
+    async function getContent(idLang) {
+        const data = await fetchAdmin("getContent", { id: idPopup, idLang: idLang });
+
+        const activeOff = document.getElementById("popup-active-off");
+        const activeOn = document.getElementById("popup-active-on");
+        const titleEl = document.getElementById("popup-title");
+
+        if (activeOff) {
+            activeOff.checked = true;
+        }
+
+        if (titleEl) {
+            titleEl.value = "";
+        }
+
+        if (data) {
+            if (activeOn && activeOff) {
+                if (data.active) {
+                    activeOn.checked = true;
+                } else {
+                    activeOff.checked = true;
+                }
+            }
+
+            if (titleEl) {
+                titleEl.value = data.title;
+            }
+
+            const editor = tinymce.get("popup-content");
+            if (editor) editor.setContent(data.content ?? "");
+            else document.getElementById("popup-content").value = data.content ?? "";
+
+            currentLangId = idLang;
+            highlightLanguageButton(currentLangId);
+            attachDirtyListeners();
+            syncBaselineFromDom();
+        }
+    }
+
+    function initMce() {
+        const existing = tinymce.get("popup-content");
+        if (existing) {
+            existing.remove();
+        }
+
+        tinymce.init({
+            selector: "#popup-content",
+            menubar: false,
+            plugins: "link lists code table image",
+            toolbar: "undo redo | bold italic | bullist numlist | link image | code",
+            images_upload_url: "{{ endpoint|raw }}&ajax=1&action=uploadMceImage",
+            convert_urls: false,
+            relative_urls: false,
+            remove_script_host: false,
+            automatic_uploads: true,
+            file_picker_types: "image",
+            file_picker_callback: function (cb, value, meta) {
+                if (meta.filetype !== "image") return;
+
+                const input = document.createElement("input");
+                input.setAttribute("type", "file");
+                input.setAttribute("accept", "image/*");
+
+                input.addEventListener("change", async function () {
+                    const file = input.files && input.files[0];
+                    if (!file) return;
+
+                    const formData = new FormData();
+                    formData.append("file", file, file.name);
+
+                    const res = await fetch("{{ endpoint|raw }}&ajax=1&action=uploadMceImage", {
+                        method: "POST",
+                        body: formData,
+                    });
+
+                    const data = await res.json();
+                    if (!res.ok) {
+                        throw new Error(data?.message || "Errore upload immagine");
+                    }
+
+                    if (!data?.location) {
+                        throw new Error("Risposta upload non valida");
+                    }
+
+                    cb(data.location, { title: file.name });
+                });
+
+                input.click();
+            },
+            skin: "prestashop",
+            skin_url: "/js/tiny_mce/skins/prestashop",
+            content_css: "/js/tiny_mce/skins/prestashop/content.min.css",
+            valid_children: "+body[style]",
+            extended_valid_elements: "style[type],*[*],*[style|class|data-*]",
+        });
+    }
+
+    function initChosen() {
+        $("select.chosen").chosen({
+            disable_search_threshold: 10, // Nasconde la ricerca se ci sono meno di 10 elementi
+            allow_single_deselect: true, // Permette di deselezionare in un select singolo
+            no_results_text: "Nessun risultato trovato", // Testo quando non ci sono risultati
+            placeholder_text_single: "Seleziona un'opzione", // Testo placeholder per select singolo
+            placeholder_text_multiple: "Seleziona alcune opzioni", // Testo placeholder per select multiplo
+            width: "100%", // Larghezza del componente
+            search_contains: true, // Cerca anche all'interno delle parole (non solo all'inizio)
+            max_selected_options: 5, // Numero massimo di opzioni selezionabili (multiselect)
+            display_disabled_options: true, // Mostra le opzioni disabilitate
+            display_selected_options: true, // Mostra le opzioni già selezionate nel dropdown
+            enable_split_word_search: true, // Abilita la ricerca per parole separate
+        });
+    }
+
+    function initCategoriesTree()
+    {
+        const tree = document.getElementById("popup-categories");
+        const categoriesStr = "{{ categoriesTree|e('js') }}";
+        const categories = JSON.parse(categoriesStr);        
+
+        if (!tree) return;
+
+        tree.setData(categories);
+    }
+
+    function initFeaturesTree()
+    {
+        const tree = document.getElementById("popup-features");
+        const featuresTree = "{{ featuresTree|e('js') }}";
+        const features = JSON.parse(featuresTree);
+
+        if (!tree) return;
+
+        tree.setData(features);
+    }
+
+    function initAttributesTree()
+    {
+        const tree = document.getElementById("popup-attributes");
+        const attributesTree = "{{ attributesTree|e('js') }}";
+        const attributes = JSON.parse(attributesTree);
+
+        if (!tree) return;
+
+        tree.setData(attributes);
+    }
+
+    document.addEventListener("DOMContentLoaded", async (e) => {
+        const btnNavBar = document.getElementById("btn-navbar");
+        const footer = document.getElementById("panel-footer");
+        const dataContent = document.getElementById("data-content");
+
+        if (btnNavBar) {
+            btnNavBar.addEventListener("click", async (e) => {
+                const button = e.target.closest("button");
+                if (button) {
+                    await showSection(idPopup, button.dataset.content);
+                    initChosen();
+                }
+            });
+        }
+
+        if (dataContent) {
+            dataContent.addEventListener("click", async (e) => {
+                const btn = e.target.closest("button[data-lang-id]");
+                if (!btn) {
+                    return;
+                }
+
+                const nextLangId = btn.dataset.langId;
+                if (String(nextLangId) === String(currentLangId)) {
+                    return;
+                }
+
+                if (isDirty || hasUnsavedChanges()) {
+                    const ok = confirm("Hai modifiche non salvate. Vuoi cambiare lingua e perdere le modifiche?");
+                    if (!ok) {
+                        highlightLanguageButton(currentLangId);
+                        return;
+                    }
+                }
+
+                await getContent(nextLangId);
+            });
+        }
+
+        if (footer) {
+            footer.addEventListener("click", async (e) => {
+                const button = e.target.closest("button");
+                if (button) {
+                    const action = button.dataset.action;
+                    if (action === "save") {
+                        await saveCurrentSection();
+                    } else if (action === "back") {
+                        console.log("BACK");
+
+                        window.location.href = "{{ backUrl | raw}}";
+                    }
+                }
+            });
+        }
+
+        await showSection(idPopup, "content", idLang);
+    });
+</script>

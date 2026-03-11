@@ -1,580 +1,705 @@
 <?php
+
 /**
- * 2017 mpSOFT
+ * Copyright since 2007 PrestaShop SA and Contributors
+ * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License (AFL 3.0)
- * that is bundled with this package in the file LICENSE.txt.
+ * This source file is subject to the Academic Free License version 3.0
+ * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
- * http://opensource.org/licenses/afl-3.0.php
+ * https://opensource.org/licenses/AFL-3.0
  * If you did not receive a copy of the license and are unable to
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to http://www.prestashop.com for more information.
- *
- *  @author    mpSOFT <info@mpsoft.it>
- *  @copyright 2017 mpSOFT Massimiliano Palermo
- *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
- *  International Registered Trademark & Property of mpSOFT
+ * @author    Massimiliano Palermo <maxx.palermo@gmail.com>
+ * @copyright Since 2016 Massimiliano Palermo
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
+require_once _PS_MODULE_DIR_ . 'mpbutton/src/Models/ModelMpButton.php';
+require_once _PS_MODULE_DIR_ . 'mpbutton/src/Helpers/MpButtonUtility.php';
 
-ini_set('max_execution_time', 300); //300 seconds = 5 minutes
-ini_set('post_max_size', '64M');
-ini_set('upload_max_filesize', '64M');
+use MpSoft\MpButton\Helpers\GetTwigEnvironment;
+use MpSoft\MpButton\Models\ModelMpButton;
 
 class AdminMpButtonController extends ModuleAdminController
 {
-    public $link;
-    protected $id_lang;
-    protected $id_shop;
-    protected $messages;
-    protected $local_path;
-    
+    protected $id_button;
+    protected $languages;
+    protected $default_language;
+
     public function __construct()
     {
         $this->bootstrap = true;
-        $this->context = Context::getContext();
-        $this->className = 'AdminMpButton';
-        $this->token = Tools::getValue('token', Tools::getAdminTokenLite($this->className));
         parent::__construct();
-        $this->id_lang = (int)ContextCore::getContext()->language->id;
-        $this->id_shop = (int)ContextCore::getContext()->shop->id;
-    }
+        $this->id_button = (int) Tools::getValue('id', 0);
 
-    public function initContent()
-    {
-        $this->smarty = Context::getContext()->smarty;
-        $this->link = new LinkCore();
-        $this->errors = array();
-        $this->messages = array();
-        $this->addJqueryUI('ui.progressbar');
-        
-        require_once $this->module->getPath().'classes/MpButtonObjectClass.php';
-        
-        if (Tools::isSubmit('ajax')) {
-            $action = 'ajaxProcess'.Tools::ucfirst(Tools::getValue('action'));
-            $this->$action();
-            $this->content = $this->initList().$this->initScript();
-        } elseif (Tools::isSubmit('submitBulkdeletemp_button')) {
-            $this->deleteButtons();
-        } elseif (Tools::isSubmit('submitButtonSave')) {
-            if (!$this->validateForm()) {
-                $this->errors[] = sprintf(
-                    $this->l('Error saving data: %d, %s'),
-                    Db::getInstance()->getNumberError(),
-                    Db::getInstance()->getMsgError()
-                );
-            } else {
-                $this->confirmations[] = $this->l('Button saved');
+        if (Tools::isSubmit('ajax') && Tools::getValue('action')) {
+            $action = 'ajaxProcess' . Tools::ucfirst(Tools::getValue('action'));
+            if (method_exists($this, $action)) {
+                $response = $this->$action();
+                if (isset($response['httpCode'])) {
+                    $httpCode = $response['httpCode'];
+                    unset($response['httpCode']);
+                } else {
+                    $httpCode = 200;
+                }
+                $this->response($response, $httpCode);
             }
-        } elseif (Tools::isSubmit('submitNewButton')) {
-            $this->content = $this->initForm();
-            parent::initContent();
-            return;
-        }
-        
-        $this->content = $this->initList().$this->initScript();
-        parent::initContent();
-    }
-    
-    protected function deleteButtons()
-    {
-        $ids = Tools::getValue('mp_buttonBox', array());
-        if ($ids) {
-            foreach ($ids as $id) {
-                Db::getInstance()->delete('mp_button', 'id_mp_button='.(int)$id);
-                $this->confirmations[] = sprintf(
-                    $this->l('Button with id %d has been removed.'),
-                    $id
-                );
-            }
-        }
-    }
-    
-    protected function validateForm()
-    {
-        $id = (int)Tools::getValue('hidden_id_mp_button', 0);
-        $title = Tools::getValue('input_text_title', '');
-        $content = Tools::getValue('input_text_content', '');
-        $is_active = (int)Tools::getValue('input_switch_is_active', 0);
-        $position = Tools::getvalue('input_select_position', 'top');
-        $offset = (int)Tools::getValue('input_text_offset', 0);
-        require_once $this->module->getPath().'classes/MpButtonObjectClass.php';
-        $MpButton = new MpButtonObjectClass($id);
-        $MpButton->icon = 'fa-cube';
-        $MpButton->is_active = $is_active;
-        $MpButton->title = $title;
-        $MpButton->name = '';
-        $MpButton->content = htmlspecialchars($content);
-        $MpButton->position = $position;
-        $MpButton->offset = $offset;
-        if ($id) {
-            try {
-                return $MpButton->update();
-            } catch (Exception $ex) {
-                $this->warnings[] = $ex->getMessage();
-                return false;
-            }
-        } else {
-            try {
-                return $MpButton->add();
-            } catch (Exception $ex) {
-                $this->warnings[] = $ex->getMessage();
-                return false;
-            }
-        }
-    }
-    
-    private function initForm()
-    {
-        $form = new HelperFormCore();
-        $form->table = 'mp_button';
-        $form->default_form_language = (int)Configuration::get('PS_LANG_DEFAULT');
-        $form->allow_employee_form_lang = (int)Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG');
-        $form->submit_action = 'submit_form';
-        $form->currentIndex = $this->context->link->getAdminLink($this->className, false);
-        $form->token = Tools::getAdminTokenLite($this->className);
-        $form->bootstrap = true;
-        $form->context = $this->context;
-        $form->fields_value = $this->getFormValues();
-        $form->identifier = 'id_mp_button';
-        $form->show_toolbar = true;
-        $form->tpl_vars = array(
-            'fields_value' => $this->getFormValues(),
-            'languages' => $this->context->controller->getLanguages(),
-        );
-        return $form->generateForm(array($this->getFormFields()));
-    }
-    
-    protected function getFormFields()
-    {
-        $popup_preview_link =
-            '<div class="form-group"><button class="btn btn-default"><i class="icon fa-eye"></i></button></div>';
-        $fields_form = array(
-            'form' => array(
-                'legend' => array(
-                    'title' => $this->l('Button properties'),
-                    'icon' => 'icon-edit',
-                    'badge' => 'icon-edit',
-                ),
-                'input' => array(
-                    array(
-                        'type' => 'hidden',
-                        'name' => 'hidden_id_mp_button',
-                    ),
-                    array(
-                        'type' => 'html',
-                        'name' => $popup_preview_link,
-                    ),
-                    array(
-                        'type' => 'switch',
-                        'label' => $this->l('Is active?'),
-                        'name' => 'input_switch_is_active',
-                        'is_bool' => true,
-                        'values' => array(
-                            array(
-                                'id' => 'active_on',
-                                'value' => 1,
-                                'label' => $this->l('Yes')
-                            ),
-                            array(
-                                'id' => 'active_off',
-                                'value' => 0,
-                                'label' => $this->l('No')
-                            )
-                        ),
-                    ),
-                    array(
-                        'type' => 'text',
-                        'label' => $this->l('Title'),
-                        'name' => 'input_text_title',
-                        'class' => 'text-strong',
-                    ),
-                    array(
-                        'type' => 'textarea',
-                        'label' => $this->l('Content'),
-                        'name' => 'input_text_content',
-                        'cols' => 40,
-                        'rows' => 10,
-                        'class' => 'rte',
-                        'autoload_rte' => true,
-                    ),
-                    array(
-                        'type' => 'select',
-                        'label' => $this->l('Position'),
-                        'name' => 'input_select_position',
-                        'options' => array(
-                            'query' => array(
-                                array(
-                                    'id' => MpButtonObjectClass::POSITION_TOP,
-                                    'value' => $this->l('Top'),
-                                ),
-                                array(
-                                    'id' => MpButtonObjectClass::POSITION_BOTTOM,
-                                    'value' => $this->l('Bottom'),
-                                ),
-                                array(
-                                    'id' => MpButtonObjectClass::POSITION_LEFT,
-                                    'value' => $this->l('Left'),
-                                ),
-                                array(
-                                    'id' => MpButtonObjectClass::POSITION_RIGHT,
-                                    'value' => $this->l('Right'),
-                                ),
-                                array(
-                                    'id' => MpButtonObjectClass::POSITION_POPUP,
-                                    'value' => $this->l('Center'),
-                                ),
-                            ),
-                            'id' => 'id',
-                            'name' => 'value',
-                        )
-                    ),
-                    array(
-                        'type' => 'text',
-                        'label' => $this->l('Offset'),
-                        'name' => 'input_text_offset',
-                        'class' => 'text-strong text-right fixed-width-sm',
-                    ),
-                ),
-                'submit' => array(
-                    'title' => $this->l('Save'),
-                    'name' => 'submitButtonSave',
-                    'class' => 'btn btn-default pull-right'
-                ),
-                'buttons' => array(
-                    array(
-                        'href' => $this->context->link->getAdminLink($this->className),
-                        'title' => $this->l('Back to list'),
-                        'icon' => 'process-icon-back'
-                    ),
-                ),
-            ),
-        );
-
-        return $fields_form;
-    }
-    
-    protected function getFormValues()
-    {
-        $id = (int)Tools::getValue('id', 0);
-        if ($id) {
-            require_once $this->module->getPath().'classes/MpButtonObjectClass.php';
-            $MpButton = new MpButtonObjectClass($id);
-            return array(
-                'hidden_id_mp_button' => (int)$MpButton->id,
-                'input_switch_is_active' => (int)$MpButton->is_active,
-                'input_text_title' => $MpButton->title,
-                'input_text_content' => htmlspecialchars_decode($MpButton->content),
-                'input_select_position' => $MpButton->position,
-                'input_text_offset' => $MpButton->offset,
-            );
-        } else {
-            return array(
-                'hidden_id_mp_button' => (int)Tools::getValue('id', 0),
-                'input_switch_is_active' => 0,
-                'input_text_title' => '',
-                'input_text_content' => '',
-                'input_select_position' => MpButtonObjectClass::POSITION_TOP,
-                'input_text_offset' => 0,
-            );
         }
     }
 
-    private function initList()
+    public static function renderTwig($path, $params)
     {
-        $currentIndex = $this->context->link->getAdminLink($this->className, false);
-        $token = Tools::getAdminTokenLite($this->className);
-        $list = new HelperListCore();
-        $list->title = $this->l('Buttons list');
-        $list->shopLinkType = '';
-        $list->table = 'mp_button';
-        $list->no_link = true;
-        $list->bulk_actions = array(
-            'delete' => array(
-                'text' => $this->l('Delete selected'),
-                'confirm' => $this->l('Delete selected elements?'),
-                'icon' => 'icon-trash',
-            ),
-        );
-        $list->show_toolbar = true;
-        $list->identifier = 'id_mp_button';
-        $list->token = $token;
-        $list->currentIndex = $currentIndex;
-        $list->simple_header = false;
-        $list->toolbar_btn = array(
-            'new' => array(
-                'desc' => $this->l('Add new button'),
-                'icon' => 'process-icon-add',
-                'href' => $this->context->link->getAdminLink($this->className).'&submitNewButton',
-                'token' => $token,
-            ),
-            'back' => array(
-                'desc' => $this->l('Back to dashboard'),
-                'icon' => 'process-icon-back',
-                'href' => $this->context->link->getAdminLink('AdminDashboard'),
-                'token' => '',
-            ),
-        );
-        $values = $this->getListValues();
-        $list->listTotal = count($values);
-        return $list->generateList($values, $this->getListFields());
+        $twig = new GetTwigEnvironment('mpbutton');
+        $twig->load('@ModuleTwig/' . $path);
+
+        return $twig->render($params);
     }
-    
-    protected function getListValues()
+
+    protected function response($data, $status = 200)
     {
-        $currentIndex = $this->context->link->getAdminLink($this->className).'&submitNewButton';
-        $db = Db::getInstance();
-        $sql = new DbQueryCore();
-        $sql->select('*')
-            ->from('mp_button')
-            ->orderBy('title');
-        $result = $db->executeS($sql);
-        if ($result) {
-            foreach ($result as &$row) {
-                $id = (int)$row['id_mp_button'];
-                $row['icon'] = '<i class="icon '.$row['icon'].'"></i>';
-                $row['is_active'] = $row['is_active']==1?$this->toggle(true, $id):$this->toggle(false, $id);
-                $row['button'] = '<a href="javascript:location.href=\''.$currentIndex.'&id='.$row['id_mp_button'].'\'">'
-                    .'<button type="button" class="btn btn-default">'
-                    .'<i class="icon icon-edit"></i> '
-                    .$this->l('Edit')
-                    .'</button>'
-                    .'</a>';
-            }
-        } elseif (!$result && $db->getNumberError()) {
-            $this->errors[] = sprintf(
-                $this->l('Error getting values: %d, %s'),
-                $db->getNumberError(),
-                $db->getMsgError()
-            );
-            return array();
-        }
-        return $result;
+        header('Content-Type: application/json');
+        http_response_code($status);
+        echo json_encode($data);
+
+        exit;
     }
-    
-    protected function toggle($is_active, $value)
+
+    public function setMedia($isNewTheme = false)
     {
-        if ($is_active) {
-            $btn = $this->createElement(
-                'i',
-                'ajax-toggle icon icon-check',
-                'color: #72C279; cursor: pointer;',
-                $value,
-                'javascript:mpbutton_ToggleActive(this)'
-            );
-        } else {
-            $btn = $this->createElement(
-                'i',
-                'ajax-toggle icon icon-times',
-                'color: #C27279; cursor: pointer;',
-                $value,
-                'javascript:mpbutton_ToggleActive(this)'
-            );
-        }
-        return $btn;
-    }
-    
-    protected function createElement($element, $class, $style, $value, $onclick)
-    {
-        $el = "<".$element
-            ." class='".$class
-            ."' style='".$style
-            ."' value='".$value
-            ."' onclick='".$onclick
-            ."'></".$element.">";
-        return $el;
-    }
-    
-    protected function getListFields()
-    {
-        $fields_list = array(
-            'id_mp_button' => array(
-                'title' => $this->l('Id'),
-                'align' => 'text-right',
-                'width' => '32',
-                'search' => false,
-            ),
-            'icon' => array(
-                'title' => $this->l('Icon'),
-                'align' => 'text-center',
-                'width' => '48',
-                'type' => 'bool',
-                'float' => true,
-                'search' => false,
-            ),
-            'title' => array(
-                'title' => $this->l('Title'),
-                'align' => 'text-left',
-                'width' => 'auto',
-                'search' => false,
-            ),
-            'position' => array(
-                'title' => $this->l('Position'),
-                'align' => 'text-left',
-                'width' => 'auto',
-                'search' => false,
-            ),
-            'is_active' => array(
-                'title' => $this->l('Is active'),
-                'align' => 'text-center',
-                'width' => 32,
-                'type' => 'bool',
-                'float' => true,
-                'hint' => $this->l('Click here to activate or deactivate button.'),
-                'search' => false,
-            ),
-            'button' => array(
-                'type' => 'bool',
-                'float' => true,
-                'align' => 'text-center',
-                'search' => false,
-                'title' => $this->l('Actions'),
-            )
-        );
-        return $fields_list;
-    }
-    
-    public function ajaxProcessToggleStatus()
-    {
-        $id = (int)Tools::getValue('id_mp_button', 0);
-        if (!$id) {
-            print Tools::jsonEncode(
-                array(
-                    'status' => false,
-                    'message' => $this->l('Id button not valid'),
-                )
-            );
-            exit();
-        }
-        $db = Db::getInstance();
-        $result = $db->execute(
-            'update '._DB_PREFIX_.'mp_button set is_active=NOT is_active where id_mp_button='.(int)$id
-        );
-        if (!$result) {
-            print Tools::jsonEncode(
-                array(
-                    'status' => false,
-                    'message' => $db->getMsgError(),
-                )
-            );
-            exit();
-        }
-        $sql = 'select is_active from '._DB_PREFIX_.'mp_button where id_mp_button='.(int)$id;
-        $active = (int)$db->getValue($sql);
-        print Tools::jsonEncode(
-            array(
-                'toggle' => $active,
-            )
-        );
-        exit();
-    }
-    
-    private function initScript()
-    {
-        $smarty = Context::getContext()->smarty;
-        $smarty->assign(
-            array(
-                'ajax_url' => $this->context->link->getAdminLink($this->className, false),
-                'ajax_token' => Tools::getAdminTokenLite($this->className),
-            )
-        );
-        $script = $smarty->fetch($this->module->getPath().'views/templates/admin/script.tpl');
-        return $script;
-    }
-    
-    public function setMedia()
-    {
-        parent::setMedia();
+        parent::setMedia($isNewTheme);
+
         $this->addJqueryUI('ui.dialog');
         $this->addJqueryUI('ui.progressbar');
         $this->addJqueryUI('ui.draggable');
         $this->addJqueryUI('ui.effect');
         $this->addJqueryUI('ui.effect-slide');
         $this->addJqueryUI('ui.effect-fold');
-        PrestaShopLoggerCore::addLog($this->module->name .  ': setMedia');
+        $this->addJqueryUI('ui.datepicker');
+        $this->addJqueryPlugin('chosen');
+        $this->addJS(_PS_JS_DIR_ . 'tiny_mce/tinymce.min.js');
     }
-    
-    public function getCategories()
+
+    public function getEditPage()
     {
-        $db = Db::getInstance();
-        $sql = new DbQueryCore();
-        $output = array();
-        $sql->select('id_category as id')
-                ->select('name')
-                ->from('category_lang')
-                ->where('id_shop = ' . (int)$this->id_shop)
-                ->where('id_lang = ' . (int)$this->id_lang)
-                ->orderBy('name');
-        $result = $db->executeS($sql);
-        if (!$result) {
-            return array();
-        }
-        $selected = explode(',', Tools::getValue('input_select_categories', ''));
-        foreach ($result as $row) {
-            $is_selected = in_array($row['id'], $selected);
-            $output[] = array(
-                'id' => $row['id'],
-                'name' => $row['name'],
-                'selected' => $is_selected,
-            );
-        }
-        return $output;
+        $id = (int) Tools::getValue('id');
+        $path = 'Admin/PopupEditor';
+
+        $model = new ModelMpButton($id);
+
+        $params = [
+            'model' => $model,
+            'backUrl' => $this->context->link->getAdminLink($this->controller_name),
+            'endpoint' => $this->context->link->getAdminLink($this->controller_name),
+            'idPopup' => $id,
+            'idLang' => $this->context->language->id,
+            'categoriesTree' => json_encode($this->getCategories($id)),
+            'featuresTree' => json_encode($this->getFeatures($id)),
+            'attributesTree' => json_encode($this->getAttributes($id)),
+        ];
+
+        $page = self::renderTwig($path, $params);
+
+        return $page;
     }
-    
-    public function getManufacturers()
+
+    public function postProcess()
     {
-        $db = Db::getInstance();
-        $sql = new DbQueryCore();
-        $output = array();
-        $sql->select('id_manufacturer as id')
-                ->select('name')
-                ->from('manufacturer')
-                ->orderBy('name');
-        $result = $db->executeS($sql);
-        if (!$result) {
-            return array();
-        }
-        $selected = explode(',', Tools::getValue('input_select_manufacturers', ''));
-        foreach ($result as $row) {
-            $is_selected = in_array($row['id'], $selected);
-            $output[] = array(
-                'id' => $row['id'],
-                'name' => $row['name'],
-                'selected' => $is_selected,
-            );
-        }
-        return $output;
+        return parent::postProcess();
     }
-    
-    public function getSuppliers()
+
+    public function initContent()
     {
-        $db = Db::getInstance();
-        $sql = new DbQueryCore();
-        $output = array();
-        $sql->select('id_supplier as id')
-                ->select('name')
-                ->from('supplier')
-                ->orderBy('name');
-        $result = $db->executeS($sql);
-        if (!$result) {
-            return array();
+        if (Tools::getValue('action') === 'edit') {
+            $this->content = $this->getEditPage();
+        } else {
+            /** @var MpButton */
+            $module = $this->module;
+            $template = $module->renderTwig('Admin/AdminTable', [
+                'endpoint' => $this->context->link->getAdminLink($this->controller_name),
+            ]);
+
+            $this->content = $template;
         }
-        $selected = explode(',', Tools::getValue('input_select_manufacturers', ''));
-        foreach ($result as $row) {
-            $is_selected = in_array($row['id'], $selected);
-            $output[] = array(
-                'id' => $row['id'],
-                'name' => $row['name'],
-                'selected' => $is_selected,
-            );
+
+        parent::initContent();
+    }
+
+    public function ajaxProcessFetchAllPopups()
+    {
+        $params = [
+            'search' => Tools::getValue('search'),
+            'id_order' => Tools::getValue('orderId'),
+            'orderBy' => Tools::getValue('sort'),
+            'sort' => Tools::getValue('order'),
+            'limit' => Tools::getValue('limit'),
+            'offset' => Tools::getValue('offset'),
+            'type' => Tools::getValue('type'),
+            'filter' => Tools::getValue('filter'),
+        ];
+
+        $data = ModelMpButton::getAllPopups($params);
+
+        $this->response([
+            'success' => true,
+            'rows' => $data['rows'],
+            'total' => $data['total'],
+            'totalNotFiltered' => $data['totalNotFiltered'],
+            'offset' => $data['offset'],
+            'limit' => $data['limit'],
+            'query' => $data['query']
+        ]);
+    }
+
+    public function ajaxProcessGetContent()
+    {
+        $id = (int) Tools::getValue('id');
+        $idLang = (int) Tools::getValue('idLang');
+        $model = new ModelMpButton($id, $idLang);
+
+        return [
+            'active' => $model->active,
+            'title' => $model->title,
+            'content' => $model->content,
+            'position' => $model->position,
+            'priority' => $model->priority,
+            'positions' => [
+                0 => 'Centro',
+                1 => 'Sinistra',
+                2 => 'Destra',
+                3 => 'Sopra',
+                4 => 'Sotto',
+                98 => 'Carrello',
+                99 => 'Prodotto',
+            ],
+        ];
+    }
+
+    public function ajaxProcessShowSection()
+    {
+        $id = (int) Tools::getValue('id');
+        $idLang = (int) Tools::getValue('idLang');
+        $section = Tools::getValue('section');
+
+        return $this->renderSection($id, $idLang, $section);
+    }
+
+    public function ajaxProcessDelete()
+    {
+        $id = (int) Tools::getValue('id');
+        $model = new ModelMpButton($id);
+        $error = '';
+
+        try {
+            if (Validate::isLoadedObject($model)) {
+                $delete = $model->delete();
+                if (!$delete) {
+                    $error = 'Errore DB ' + Db::getInstance()->getMsgError();
+                }
+            } else {
+                $error = 'Elemento non trovato.';
+            }
+        } catch (\Throwable $th) {
+            $error = $th->getMessage();
         }
-        return $output;
+
+        return [
+            'id' => $id,
+            'success' => $error ? false : true,
+            'error' => $error
+        ];
+    }
+
+    public function ajaxProcessSaveSection()
+    {
+        $id = (int) Tools::getValue('id');
+        $idLang = (int) Tools::getValue('idLang');
+        $section = (string) Tools::getValue('section');
+        $dataRaw = Tools::getValue('data');
+
+        if (!$idLang) {
+            $idLang = (int) $this->context->language->id;
+        }
+
+        $payload = [];
+        if ($dataRaw) {
+            $decoded = json_decode($dataRaw, true);
+            if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
+                return [
+                    'success' => false,
+                    'message' => 'Payload non valido',
+                ];
+            }
+            $payload = $decoded;
+        }
+
+        if ($id == 0 && $section != 'content') {
+            return [
+                'success' => false,
+                'message' => 'Devi salvare il contenuto del banner prima di proseguire!',
+            ];
+        }
+
+        $model = new ModelMpButton($id);
+
+        $section = Tools::strtolower(trim($section));
+        switch ($section) {
+            case 'content':
+                if (array_key_exists('active', $payload)) {
+                    $model->active = (bool) $payload['active'];
+                }
+                if (array_key_exists('position', $payload) && $payload['position'] !== null && $payload['position'] !== '') {
+                    $model->position = (int) $payload['position'];
+                }
+                if (array_key_exists('priority', $payload) && $payload['priority'] !== null && $payload['priority'] !== '') {
+                    $model->priority = (int) $payload['priority'];
+                }
+                if (array_key_exists('title', $payload)) {
+                    $model->title[$idLang] = (string) $payload['title'];
+                }
+                if (array_key_exists('content', $payload)) {
+                    $model->content[$idLang] = (string) $payload['content'];
+                }
+                break;
+
+            case 'timer':
+                if (array_key_exists('delay', $payload) && $payload['delay'] !== null && $payload['delay'] !== '') {
+                    $model->delay = (int) $payload['delay'];
+                }
+                if (array_key_exists('expire', $payload) && $payload['expire'] !== null && $payload['expire'] !== '') {
+                    $model->expire = (int) $payload['expire'];
+                }
+                if (array_key_exists('date_start', $payload)) {
+                    $model->date_start = $this->toMysqlDateTime($payload['date_start']);
+                }
+                if (array_key_exists('date_end', $payload)) {
+                    $model->date_end = $this->toMysqlDateTime($payload['date_end']);
+                }
+                break;
+
+            case 'visibility':
+                if (array_key_exists('customer_groups', $payload)) {
+                    $model->customer_groups = $this->arrayToString($payload['customer_groups']);
+                }
+                if (array_key_exists('pages', $payload)) {
+                    $model->pages = $this->arrayToString($payload['pages']);
+                }
+                if (array_key_exists('manufacturers', $payload)) {
+                    $model->manufacturers = $this->arrayToString($payload['manufacturers']);
+                }
+                if (array_key_exists('suppliers', $payload)) {
+                    $model->suppliers = $this->arrayToString($payload['suppliers']);
+                }
+                if (array_key_exists('products', $payload)) {
+                    $model->products = $this->arrayToString($payload['products']);
+                }
+                break;
+
+            case 'categories':
+                if (array_key_exists('categories', $payload)) {
+                    $model->categories = is_array($payload['categories']) ? $payload['categories'] : [];
+                }
+                break;
+
+            case 'features':
+                if (array_key_exists('features', $payload)) {
+                    $model->features = is_array($payload['features']) ? $payload['features'] : [];
+                }
+                break;
+
+            case 'attributes':
+                if (array_key_exists('attributes', $payload)) {
+                    $model->attributes = is_array($payload['attributes']) ? $payload['attributes'] : [];
+                }
+                break;
+
+            default:
+                return [
+                    'id' => $id,
+                    'success' => false,
+                    'message' => 'Sezione non valida',
+                ];
+        }
+
+        try {
+            $model->id_employee = (int) $this->context->employee->id;
+            if (Validate::isLoadedObject($model)) {
+                $model->date_upd = date('Y-m-d H:i:s');
+                $ok = (bool) $model->update(true);
+            } else {
+                $model->date_add = date('Y-m-d H:i:s');
+                $model->date_upd = null;
+                $ok = (bool) $model->add(false, true);
+            }
+            $this->fixDates($model->id);
+        } catch (Exception $e) {
+            return [
+                'id' => $model->id ?? 0,
+                'success' => false,
+                'message' => $e->getMessage(),
+            ];
+        }
+
+        return [
+            'id' => $model->id ?? $id,
+            'success' => $ok,
+            'message' => $ok ? 'OK' : 'Errore salvataggio',
+        ];
+    }
+
+    private function arrayToString($array, $delimitator = ',')
+    {
+        if (is_array($array)) {
+            return implode($delimitator, $array);
+        }
+
+        return (string) $array;
+    }
+
+    private function fixDates($id)
+    {
+        $pfx = _DB_PREFIX_;
+        $db = \Db::getInstance();
+        $sql = new \DbQuery();
+        $sql
+            ->select('date_start,date_end,date_add,date_upd')
+            ->from('mp_button')
+            ->where('id_mp_button=' . (int) $id);
+        $row = $db->getRow($sql);
+        $blank_date = '0000-00-00 00:00:00';
+        $set = '';
+
+        if ($row['date_start'] == $blank_date) {
+            $set .= '`date_start` = null,';
+        }
+        if ($row['date_end'] == $blank_date) {
+            $set .= '`date_end` = null,';
+        }
+        if ($row['date_add'] == $blank_date) {
+            $set .= '`date_add` = NOW(),';
+        }
+        if ($row['date_upd'] == $blank_date) {
+            $set .= '`date_upd` = null,';
+        }
+
+        $set = rtrim($set, ',');
+        if ($set) {
+            $update = "update {$pfx}mp_button set {$set} where id_mp_button={$id}";
+            try {
+                return $db->execute($update);
+            } catch (\Throwable $th) {
+                return $th->getMessage();
+            }
+        }
+    }
+
+    public function ajaxProcessUploadMceImage()
+    {
+        if (!isset($_FILES['file'])) {
+            return [
+                'success' => false,
+                'message' => 'Nessun file ricevuto',
+                'httpCode' => 400,
+            ];
+        }
+
+        $file = $_FILES['file'];
+        if (!is_array($file) || empty($file['tmp_name']) || !empty($file['error'])) {
+            return [
+                'success' => false,
+                'message' => 'Upload non valido',
+                'httpCode' => 400,
+            ];
+        }
+
+        $tmpName = (string) $file['tmp_name'];
+        $originalName = (string) $file['name'];
+
+        $ext = Tools::strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+        $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        if (!$ext || !in_array($ext, $allowed, true)) {
+            return [
+                'success' => false,
+                'message' => 'Estensione non consentita',
+                'httpCode' => 400,
+            ];
+        }
+
+        $uploadDir = _PS_ROOT_DIR_ . '/img/mpbutton/';
+        if (!is_dir($uploadDir)) {
+            if (!@mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
+                return [
+                    'success' => false,
+                    'message' => 'Impossibile creare la cartella img/mpbutton',
+                    'httpCode' => 500,
+                ];
+            }
+        }
+
+        $safeBase = preg_replace('/[^a-zA-Z0-9_-]+/', '_', pathinfo($originalName, PATHINFO_FILENAME));
+        $safeBase = trim((string) $safeBase, '_');
+        if ($safeBase === '') {
+            $safeBase = 'image';
+        }
+
+        $targetName = $safeBase . '-' . date('YmdHis') . '-' . Tools::passwdGen(6) . '.' . $ext;
+        $targetPath = $uploadDir . $targetName;
+
+        if (!@move_uploaded_file($tmpName, $targetPath)) {
+            return [
+                'success' => false,
+                'message' => 'Impossibile salvare il file',
+                'httpCode' => 500,
+            ];
+        }
+
+        @chmod($targetPath, 0644);
+
+        $publicUrl = rtrim((string) Tools::getShopDomainSsl(true), '/') . __PS_BASE_URI__ . 'img/mpbutton/' . $targetName;
+
+        return [
+            'location' => $publicUrl,
+        ];
+    }
+
+    private function toMysqlDateTime($value)
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $s = trim((string) $value);
+        if ($s === '') {
+            return null;
+        }
+
+        $s = str_replace('T', ' ', $s);
+        if (strlen($s) === 16) {
+            $s .= ':00';
+        }
+
+        return pSQL($s);
+    }
+
+    private function renderSection(int $id, int $idLang, string $section)
+    {
+        $path = "Admin/partials/{$section}";
+        $back = $this->context->link->getAdminLink($this->controller_name);
+        $model = new ModelMpButton($id, $idLang);
+        $fields = $model->getFields();
+
+        $params = [
+            'positions' => [
+                0 => 'Centro',
+                1 => 'Sinistra',
+                2 => 'Destra',
+                3 => 'Sopra',
+                4 => 'Sotto',
+                98 => 'Carrello',
+                99 => 'Prodotto',
+            ],
+            'customerGroups' => $this->getCustomerGroups(),
+            'pages' => [
+                'category' => 'Categorie',
+                'product' => 'Prodotto',
+                'index' => 'Home page',
+                'authentication' => 'Login',
+                'cms' => 'CMS'
+            ],
+            'manufacturers' => $this->getManufacturers(),
+            'suppliers' => $this->getSuppliers(),
+            'products' => $this->getProducts(),
+            'idPopup' => $id,
+            'idLang' => $this->context->language->id,
+            'languages' => Language::getLanguages(),
+            'fields' => $fields,
+            'backUrl' => $back
+        ];
+
+        $html = self::renderTwig($path, $params);
+
+        return [
+            'html' => $html,
+        ];
+    }
+
+    private function getCustomerGroups()
+    {
+        $id_lang = (int) Context::getContext()->language->id;
+        $items = Group::getGroups($id_lang);
+        $out = [];
+        foreach ($items as $item) {
+            $out[$item['id_group']] = $item['name'];
+        }
+
+        return $out;
+    }
+
+    private function getManufacturers()
+    {
+        $id_lang = (int) Context::getContext()->language->id;
+        $items = Manufacturer::getManufacturers(false, $id_lang, false);
+        $out = [];
+        foreach ($items as $item) {
+            $out[$item['id_manufacturer']] = $item['name'];
+        }
+
+        return $out;
+    }
+
+    private function getSuppliers()
+    {
+        $id_lang = (int) Context::getContext()->language->id;
+        $items = Supplier::getSuppliers(false, $id_lang, false);
+        $out = [];
+        foreach ($items as $item) {
+            $out[$item['id_supplier']] = $item['name'];
+        }
+
+        return $out;
+    }
+
+    private function getProducts()
+    {
+        $id_lang = (int) Context::getContext()->language->id;
+        $items = Product::getProducts($id_lang, 0, 99999, 'id_product', 'asc');
+        $out = [];
+        foreach ($items as $item) {
+            $out[$item['id_product']] = "({$item['reference']}) {$item['name']}";
+        }
+
+        return $out;
+    }
+
+    private function getCategories($id)
+    {
+        $id_lang = (int) Context::getContext()->language->id;
+        $model = new ModelMpButton((int) $id);
+        $categories = Category::getCategories($id_lang, false, true);
+        $selected = array_map('intval', $model->categories ?: []);
+
+        $buildTree = function ($parentId) use (&$buildTree, $categories, $selected) {
+            $out = [];
+            if (!isset($categories[$parentId]) || !is_array($categories[$parentId])) {
+                return $out;
+            }
+
+            foreach ($categories[$parentId] as $idCategory => $category) {
+                $idCategory = (int) $idCategory;
+                $name = '';
+                if (isset($category['infos']['name'])) {
+                    $name = (string) $category['infos']['name'];
+                }
+                if ($name === '') {
+                    $name = '#' . $idCategory;
+                }
+
+                $children = $buildTree($idCategory);
+                if (!empty($children)) {
+                    $node = [
+                        '(seleziona)' => [
+                            'value' => $idCategory,
+                            'selected' => in_array($idCategory, $selected, true) ? 1 : 0,
+                        ],
+                    ];
+                    foreach ($children as $childKey => $childValue) {
+                        $node[$childKey] = $childValue;
+                    }
+                    $out[$name] = $node;
+                } else {
+                    $out[$name] = [
+                        'value' => $idCategory,
+                        'selected' => in_array($idCategory, $selected, true) ? 1 : 0,
+                    ];
+                }
+            }
+
+            return $out;
+        };
+
+        return $buildTree(0);
+    }
+
+    public function getFeatures($id)
+    {
+        $id_lang = (int) Context::getContext()->language->id;
+        $features = Feature::getFeatures($id_lang);
+        $model = new ModelMpButton((int) $id);
+        $selected = array_map('intval', $model->features ?: []);
+
+        $tree = [];
+        foreach ($features as $feature) {
+            $idFeature = isset($feature['id_feature']) ? (int) $feature['id_feature'] : 0;
+            $featureName = isset($feature['name']) ? (string) $feature['name'] : '';
+            if ($featureName === '') {
+                $featureName = '#' . $idFeature;
+            }
+
+            $values = FeatureValue::getFeatureValuesWithLang($id_lang, $idFeature);
+            $children = [];
+            foreach ($values as $value) {
+                $idFeatureValue = isset($value['id_feature_value']) ? (int) $value['id_feature_value'] : 0;
+                $label = isset($value['value']) ? (string) $value['value'] : '';
+                if ($label === '') {
+                    $label = '#' . $idFeatureValue;
+                }
+
+                if (isset($children[$label])) {
+                    $label .= ' (#' . $idFeatureValue . ')';
+                }
+
+                $children[$label] = [
+                    'value' => $idFeatureValue,
+                    'selected' => in_array($idFeatureValue, $selected, true) ? 1 : 0,
+                ];
+            }
+
+            $tree[$featureName] = $children;
+        }
+
+        return $tree;
+    }
+
+    public function getAttributes($id)
+    {
+        $id_lang = (int) Context::getContext()->language->id;
+        $attributeGroups = AttributeGroup::getAttributesGroups($id_lang);
+        $model = new ModelMpButton((int) $id);
+        $selected = array_map('intval', $model->attributes ?: []);
+
+        $tree = [];
+        foreach ($attributeGroups as $attributeGroup) {
+            $idAttributeGroup = isset($attributeGroup['id_attribute_group']) ? (int) $attributeGroup['id_attribute_group'] : 0;
+            $attributeGroupName = isset($attributeGroup['name']) ? (string) $attributeGroup['name'] : '';
+            if ($attributeGroupName === '') {
+                $attributeGroupName = '#' . $idAttributeGroup;
+            }
+
+            $values = AttributeGroup::getAttributes($id_lang, $idAttributeGroup);
+            $children = [];
+            foreach ($values as $value) {
+                $idAttribute = isset($value['id_attribute']) ? (int) $value['id_attribute'] : 0;
+                $label = isset($value['name']) ? (string) $value['name'] : '';
+                if ($label === '') {
+                    $label = '#' . $idAttribute;
+                }
+
+                if (isset($children[$label])) {
+                    $label .= ' (#' . $idAttribute . ')';
+                }
+
+                $children[$label] = [
+                    'value' => $idAttribute,
+                    'selected' => in_array($idAttribute, $selected, true) ? 1 : 0,
+                ];
+            }
+
+            $tree[$attributeGroupName] = $children;
+        }
+
+        return $tree;
     }
 }

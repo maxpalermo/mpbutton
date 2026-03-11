@@ -1,0 +1,46 @@
+<div class="form-container" style="display: flex; justify-content: start; align-items: top; gap: 2rem;">
+    <div class="form-group fixed-width-xxl">
+        <label for="popup-customer_groups">Mostra al gruppo di clienti</label>
+        <select name="popup-customer_groups" id="popup-customer_groups" class="form-control chosen" multiple>
+            {% for key, value in customerGroups %}
+                <option value="{{ key }}" {% if key in fields.customer_groups %}selected{% endif %}>{{ value }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="form-group fixed-width-xxl">
+        <label for="popup-pages">Mostra nelle pagine</label>
+        <select name="popup-pages" id="popup-pages" class="form-control chosen" multiple>
+            {% for key, value in pages %}
+                <option value="{{ key }}" {% if key in fields.pages %}selected{% endif %}>{{ value }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="form-group fixed-width-xxl">
+        <label for="popup-manufacturers">Mostra per i produttori</label>
+        <select name="popup-manufacturers" id="popup-manufacturers" class="form-control chosen" multiple>
+            {% for key, value in manufacturers %}
+                <option value="{{ key }}" {% if key in fields.manufacturers %}selected{% endif %}>{{ value }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="form-group fixed-width-xxl">
+        <label for="popup-suppliers">Mostra per i fornitori</label>
+        <select name="popup-suppliers" id="popup-suppliers" class="form-control chosen" multiple>
+            {% for key, value in suppliers %}
+                <option value="{{ key }}" {% if key in fields.suppliers %}selected{% endif %}>{{ value }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="form-group fixed-width-xxl">
+        <label for="popup-products">Mostra per i prodotti</label>
+        <select name="popup-products" id="popup-products" class="form-control chosen" multiple>
+            {% for key, value in products %}
+                <option value="{{ key }}" {% if key in fields.products %}selected{% endif %}>{{ value }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>

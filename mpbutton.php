@@ -1,240 +1,189 @@
 <?php
-/**
-* 2007-2018 PrestaShop
-*
-* NOTICE OF LICENSE
-*
-* This source file is subject to the Academic Free License (AFL 3.0)
-* that is bundled with this package in the file LICENSE.txt.
-* It is also available through the world-wide-web at this URL:
-* http://opensource.org/licenses/afl-3.0.php
-* If you did not receive a copy of the license and are unable to
-* obtain it through the world-wide-web, please send an email
-* to license@prestashop.com so we can send you a copy immediately.
-*
-* DISCLAIMER
-*
-* Do not edit or add to this file if you wish to upgrade PrestaShop to newer
-* versions in the future. If you wish to customize PrestaShop for your
-* needs please refer to http://www.prestashop.com for more information.
-*
-*  @author    Massimiliano Palermo <mpsoft.it>
-*  @copyright 2018 Digital Solution®
-*  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
-*  International Registered Trademark & Property of PrestaShop SA
-*/
 
+/**
+ * Copyright since 2007 PrestaShop SA and Contributors
+ * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License version 3.0
+ * that is bundled with this package in the file LICENSE.md.
+ * It is also available through the world-wide-web at this URL:
+ * https://opensource.org/licenses/AFL-3.0
+ * If you did not receive a copy of the license and are unable to
+ * obtain it through the world-wide-web, please send an email
+ * to license@prestashop.com so we can send you a copy immediately.
+ *
+ * @author    Massimiliano Palermo <maxx.palermo@gmail.com>
+ * @copyright Since 2016 Massimiliano Palermo
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
+ *
+ * @update    2026-03-06
+ */
 if (!defined('_PS_VERSION_')) {
     exit;
 }
 
-require_once dirname(__FILE__).'/classes/MpButtonObjectClass.php';
+use MpSoft\MpButton\Helpers\GetTwigEnvironment;
+use MpSoft\MpButton\Models\ModelMpButton;
+use PrestaShop\PrestaShop\Adapter\SymfonyContainer;
 
 class MpButton extends Module
 {
-    protected $config_form = false;
     protected $adminClassName = 'AdminMpButton';
     protected $id_lang;
     protected $id_shop;
-    public $link;
+    protected $adminClass = 'AdminMpButton';
 
     public function __construct()
     {
         $this->name = 'mpbutton';
         $this->tab = 'front_office_features';
-        $this->version = '1.0.0';
-        $this->author = 'Digital Solutions®';
+        $this->version = '1.1.6';
+        $this->author = 'Massimiliano Palermo';
         $this->need_instance = 0;
-        /**
-         * Set $this->bootstrap to true if your module is compliant with bootstrap (PrestaShop 1.6)
-         */
         $this->bootstrap = true;
+
         parent::__construct();
+
         $this->displayName = $this->l('MP Button display');
-        $this->description = $this->l('Whit this module you can dispaly a button on the front office.');
+        $this->description = $this->l('Whit this module you can display a button on the front office.');
         $this->confirmUninstall = $this->l('Are you sure you want to uninstall?');
-        $this->ps_versions_compliancy = array('min' => '1.6', 'max' => _PS_VERSION_);
+        $this->ps_versions_compliancy = ['min' => '8.1', 'max' => '8.99'];
         $this->id_lang = (int) Context::getContext()->language->id;
         $this->id_shop = (int) Context::getContext()->shop->id;
-        $this->link = new LinkCore();
     }
 
-    /**
-     * Don't forget to create update methods if needed:
-     * http://doc.prestashop.com/display/PS16/Enabling+the+Auto-Update
-     */
     public function install()
     {
-        $obj = new MpButtonObjectClass();
-        $result =  $obj->createTable();
-        if ($result !== true) {
-            $this->_errors[] = sprintf($this->l('Error creating table: %s'), $result);
-            return false;
-        }
-
         return parent::install() &&
-            $this->registerHook('header') &&
-            $this->registerHook('backOfficeHeader') &&
+            $this->registerHook('actionAdminControllerSetMedia') &&
+            $this->registerHook('actionFrontControllerSetMedia') &&
             $this->registerHook('displayTop') &&
-            $this->installTab('MpModules', $this->adminClassName, $this->l('MP Button'));
+            $this->registerHook('displayAfterAddToCart') &&
+            $this->installTab() &&
+            ModelMpButton::install();
     }
 
     public function uninstall()
     {
         return parent::uninstall() &&
-            $this->uninstallTab($this->adminClassName);
+            $this->uninstallTab();
     }
-    
-    /**
-     * Install Main Menu
-     * @return int Main menu id
-     */
-    public function installMainMenu()
+
+    protected function installTab()
     {
-        $id_mp_menu = (int) TabCore::getIdFromClassName('MpModules');
-        if ($id_mp_menu == 0) {
-            $tab = new TabCore();
-            $tab->active = 1;
-            $tab->class_name = 'MpModules';
-            $tab->id_parent = 0;
-            $tab->module = null;
-            $tab->name = array();
-            foreach (Language::getLanguages(true) as $lang) {
-                $tab->name[$lang['id_lang']] = $this->l('MP Modules');
+        $parentClass = 'AdminOtherModulesMp';
+        $tabRepository = static::getTabRepository();
+        $parentId = (int) $tabRepository->findOneIdByClassName($parentClass);
+
+        if (!$parentId) {
+            $parentTab = new Tab();
+            $parentTab->class_name = $parentClass;
+            $parentTab->module = $this->name;
+            $parentTab->id_parent = $parentId;
+            $parentTab->active = 1;
+            $parentTab->icon = 'extension';
+            foreach (Language::getLanguages() as $language) {
+                $parentTab->name[$language['id_lang']] = $this->l('ALTRI MODULI');
             }
-            $id_mp_menu = $tab->add();
-            if ($id_mp_menu) {
-                PrestaShopLoggerCore::addLog('id main menu: '.(int)$id_mp_menu);
-                return (int)$tab->id;
-            } else {
-                PrestaShopLoggerCore::addLog('id main menu error');
-                return false;
-            }
+            $parentTab->add();
+            $parentId = (int) $parentTab->id;
         }
+
+        $childClass = $this->adminClass;
+        $childId = $tabRepository->findOneIdByClassName($childClass);
+        $tab = $childId ? new Tab($childId) : new Tab();
+        $tab->class_name = $childClass;
+        $tab->module = $this->name;
+        $tab->id_parent = $parentId;
+        $tab->active = 1;
+        $tab->icon = 'icon-note';
+        foreach (Language::getLanguages() as $language) {
+            $tab->name[$language['id_lang']] = $this->l('Mp Mostra Popup');
+        }
+
+        return $childId ? $tab->update() : $tab->add();
     }
-    
-    /**
-     * Get id of main menu
-     * @return int Main menu id
-     */
-    public function getMainMenuId()
+
+    protected function uninstallTab()
     {
-        $id_menu = (int)Tab::getIdFromClassName('MpModules');
-        return $id_menu;
-    }
-    
-    /**
-     *
-     * @param string $parent Parent tab name
-     * @param type $class_name Class name of the module
-     * @param type $name Display name of the module
-     * @param type $active If true, Tab menu will be shown
-     * @return boolean True if successfull, False otherwise
-     */
-    public function installTab($parent, $class_name, $name, $active = 1)
-    {
-        // Create new admin tab
-        $tab = new Tab();
-        $id_parent = (int)Tab::getIdFromClassName($parent);
-        PrestaShopLoggerCore::addLog('Install main menu: id=' . (int)$id_parent);
-        if (!$id_parent) {
-            $id_parent = $this->installMainMenu();
-            if (!$id_parent) {
-                $this->_errors[] = $this->l('Unable to install main module menu tab.');
-                return false;
-            }
-            PrestaShopLoggerCore::addLog('Created main menu: id=' . (int)$id_parent);
+        $childClass = $this->adminClass;
+        $tabRepository = static::getTabRepository();
+        $childId = $tabRepository->findOneIdByClassName($childClass);
+        if ($childId) {
+            $tab = new Tab($childId);
+            $tab->delete();
         }
-        $tab->id_parent = (int)$id_parent;
-        $tab->name      = array();
-        
-        foreach (Language::getLanguages(true) as $lang) {
-            $tab->name[$lang['id_lang']] = $name;
-        }
-        
-        $tab->class_name = $class_name;
-        $tab->module     = $this->name;
-        $tab->active     = $active;
-        
-        if (!$tab->add()) {
-            $this->_errors[] = $this->l('Error during Tab install.');
-            return false;
-        }
+
         return true;
     }
-    
-    /**
-     *
-     * @param string pe $class_name Class name of the module
-     * @return boolean True if successfull, False otherwise
-     */
-    public function uninstallTab($class_name)
+
+    protected static function getTabRepository()
     {
-        $id_tab = (int)Tab::getIdFromClassName($class_name);
-        if ($id_tab) {
-            $tab = new Tab((int)$id_tab);
-            $result = $tab->delete();
-            if (!$result) {
-                $this->_errors[] = $this->l('Unable to remove module menu tab.');
-            }
-            return $result;
+        $tabRepository = SymfonyContainer::getInstance()->get('prestashop.core.admin.tab.repository');
+
+        return $tabRepository;
+    }
+
+    public function hookActionAdminControllerSetMedia($params)
+    {
+        // nothing;
+    }
+
+    public function hookActionFrontControllerSetMedia($params)
+    {
+        $this->context->controller->addCSS($this->getLocalPath() . 'views/assets/css/front.css');
+
+        $this->context->controller->addJS([
+            $this->getLocalPath() . 'views/assets/js/front.js',
+            $this->getLocalPath() . 'views/assets/js/sticky-manager.js',
+            $this->getLocalPath() . 'views/assets/js/sticky-positions.js',
+        ]);
+    }
+
+    public function hookDisplayAfterAddToCart($params)
+    {
+        $html = ModelMpButton::getContentAfterAddToCart((int) $params['product']->id);
+        if ($html) {
+            return implode('', $html);
         }
     }
 
     public function hookDisplayTop()
     {
-        $mpButtons = MpButtonObjectClass::getActiveButtons();
-        $html = array();
-        $smarty = Context::getContext()->smarty;
-            
-        foreach ($mpButtons as $but) {
-            $smarty->assign(
-                array(
-                    'content' => $but->content,
-                    'offset' => $but->offset
-                )
-            );
-            switch ($but->position) {
-                case MpButtonObjectClass::POSITION_TOP:
-                    $button = $smarty->fetch($this->getPath().'views/templates/front/top.tpl');
-                    break;
-                case MpButtonObjectClass::POSITION_BOTTOM:
-                    $button = $smarty->fetch($this->getPath().'views/templates/front/bottom.tpl');
-                    break;
-                case MpButtonObjectClass::POSITION_LEFT:
-                    $button = $smarty->fetch($this->getPath().'views/templates/front/left.tpl');
-                    break;
-                case MpButtonObjectClass::POSITION_RIGHT:
-                    $button = $smarty->fetch($this->getPath().'views/templates/front/right.tpl');
-                    break;
-                case MpButtonObjectClass::POSITION_POPUP:
-                    $button = $smarty->fetch($this->getPath().'views/templates/front/center.tpl');
-                    break;
-                default:
-                    $button = $smarty->fetch($this->getPath().'views/templates/front/center.tpl');
-                    break;
-            }
-            $html[] = $button;
-        }
-        
-        return implode('<br>', $html);
+        $controller = Tools::getValue('controller');
+
+        $buttons_top = ModelMpButton::getActiveButtonsByPosition(ModelMpButton::POSITION_TOP, $controller);
+        $buttons_left = ModelMpButton::getActiveButtonsByPosition(ModelMpButton::POSITION_LEFT, $controller);
+        $buttons_right = ModelMpButton::getActiveButtonsByPosition(ModelMpButton::POSITION_RIGHT, $controller);
+        $buttons_center_page = ModelMpButton::getActiveButtonsByPosition(ModelMpButton::POSITION_POPUP, $controller);
+        $buttons_bottom = ModelMpButton::getActiveButtonsByPosition(ModelMpButton::POSITION_BOTTOM, $controller);
+        $buttons_after_cart = ModelMpButton::getActiveButtonsByPosition(ModelMpButton::POSITION_AFTER_CART, $controller);
+        $buttons_desc = ModelMpButton::getActiveButtonsByPosition(ModelMpButton::POSITION_DESC, $controller);
+
+        $params = [
+            'frontPage' => $controller,
+            'buttons_top' => $buttons_top,
+            'buttons_left' => $buttons_left,
+            'buttons_right' => $buttons_right,
+            'buttons_center_page' => $buttons_center_page,
+            'buttons_bottom' => $buttons_bottom,
+            'buttons_after_cart' => $buttons_after_cart,
+            'buttons_description' => $buttons_desc,
+        ];
+
+        $html = $this->renderTwig('Front/ShowButton', $params);
+
+        return $html;
     }
-    
-    /**
-     * Get The URL path of this module
-     * @return string The URL of this module
-     */
-    public function getUrl()
+
+    public static function renderTwig($path, $params)
     {
-        return $this->_path;
-    }
-    
-    /**
-     * Return the physical path of this module
-     * @return string The path of this module
-     */
-    public function getPath()
-    {
-        return $this->local_path;
+        $module = Module::getInstanceByName('mpbutton');
+        $twig = new GetTwigEnvironment($module->name);
+        $twig->load('@ModuleTwig/' . $path);
+
+        return $twig->render($params);
     }
 }

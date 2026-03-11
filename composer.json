@@ -1,0 +1,49 @@
+{
+    "version": "1.0.0",
+    "name": "mpsoft/mpbutton",
+    "description": "Shows popup buttons on frontend.",
+    "type": "prestashop-module",
+    "license": "AFL-3.0",
+    "authors": [
+        {
+            "name": "Massimiliano Palermo",
+            "email": "maxx.palermo@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "MpSoft\\MpButton\\": "src/"
+        }
+    },
+    "require": {
+        "php": ">=7.4.0",
+        "ext-json": "*",
+        "ext-curl": "*"
+    },
+    "require-dev": {
+        "prestashop/autoindex": "^2.1"
+    },
+    "config": {
+        "platform": {
+            "php": "7.4"
+        },
+        "sort-packages": true,
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "prepend-autoloader": false
+    },
+    "extra": {
+        "prestashop": {
+            "name": "mpbutton",
+            "displayName": "MP Button",
+            "version": "1.0.0",
+            "description": "Shows buttons on frontend.",
+            "author": "Massimiliano Palermo",
+            "tab": "administration",
+            "is_configurable": 1,
+            "need_instance": 0
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

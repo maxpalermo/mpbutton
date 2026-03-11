@@ -1,0 +1,68 @@
+{#
+  Copyright since 2007 PrestaShop SA and Contributors
+  PrestaShop is an International Registered Trademark & Property of PrestaShop SA
+
+  NOTICE OF LICENSE
+
+  This source file is subject to the Academic Free License version 3.0
+  that is bundled with this package in the file LICENSE.md.
+  It is also available through the world-wide-web at this URL:
+  https://opensource.org/licenses/AFL-3.0
+  If you did not receive a copy of the license and are unable to
+  obtain it through the world-wide-web, please send an email
+  to license@prestashop.com so we can send you a copy immediately.
+
+  @author    Massimiliano Palermo <maxx.palermo@gmail.com>
+  @copyright Since 2016 Massimiliano Palermo
+  @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
+#}
+
+<script type="text/javascript">
+    function stickyButtons() {
+        const sticky = new StickyPositions();
+
+        const buttonsByPos = {{ {
+            top: buttons_top|default([]),
+            left: buttons_left|default([]),
+            right: buttons_right|default([]),
+            center: buttons_center_page|default([]),
+            bottom: buttons_bottom|default([]),
+            after_cart: buttons_after_cart|default([]),
+            description: buttons_description|default([])
+        }|json_encode|raw }};
+        
+
+        // Funzione helper per creare e aggiungere elementi
+        function addButton(position, content, delay, expire) {
+            const el = document.createElement("div");
+            el.innerHTML = content;
+            el.style.backgroundColor = "transparent";
+            el.setAttribute("data-delay", delay);
+            el.setAttribute("data-expire", expire);
+            el.style.display = 'none';
+            sticky.addElement(position, el);
+        }
+
+        // Aggiungi bottoni per ogni posizione
+        Object.keys(buttonsByPos).forEach((pos) => {
+            const rawList = buttonsByPos[pos];
+            const list = Array.isArray(rawList) ? rawList : (rawList && typeof rawList === 'object' ? Object.values(rawList) : []);
+            const position = StickyPositions.POSITIONS[String(pos).toUpperCase()];
+            
+            if (!position) return;
+
+            list.forEach((but) => {
+                const delay = Number(but?.delay || 0) * 1000;
+                const expire = Number(but?.expire || 0) * 1000;
+                addButton(position, String(but?.content || ""), String(delay), String(expire));
+            });
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        console.clear();
+        console.log("DOMContentLoaded MpButton");
+        
+        stickyButtons();
+    });
+</script>

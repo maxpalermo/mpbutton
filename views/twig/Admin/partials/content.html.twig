@@ -1,0 +1,59 @@
+<div class="form-container">
+    <div class="form-group">
+        <label>Popup Attivo</label>
+        <div class="form-input">
+            <span class="switch prestashop-switch fixed-width-lg">
+                <input type="radio" name="popup-active" id="popup-active-on" value="1"/>
+                <label for="_on">
+                    <i class="icon icon-2x icon-check text-success"></i>
+                </label>
+                <input type="radio" name="popup-active" id="popup-active-off" value="0" checked="checked"/>
+                <label for="_off">
+                    <i class="icon icon-2x icon-times text-danger"></i>
+                </label>
+                <a class="slide-button btn"></a>
+            </span>
+        </div>
+    </div>
+
+    <div class="form-group fixed-width-xxl">
+        <label for="position">Posizione</label>
+        <select name="popup-position" id="popup-position" class="form-control chosen">
+            {% for key, value in positions %}
+                <option value="{{ key }}" {% if fields.position==key %} selected {% endif %}>{{ value }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="form-group fixed-width-xxl">
+        <label for="priority">Priorità</label>
+        <div class="input-group">
+            <input type="number" class="form-control text-right" name="popup-priority" id="popup-priority" value="{{ fields.priority }}">
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>Lingua</label>
+        <div class="form-input">
+            <div class="btn-group" role="group">
+                {% for language in languages %}
+                    <button type="button" class="btn btn-default" data-lang-id="{{ language.id_lang }}">
+                        <img src="../img/l/{{ language.id_lang }}.jpg" alt="{{ language.name }}" width="16" height="11"/>
+                        {{ language.iso_code|upper }}
+                    </button>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>Titolo</label>
+        <div class="form-input">
+            <input type="text" name="popup-title" id="popup-title" value="{{ fields.title }}"/>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <textarea id="popup-content" name="popup-content" id="popup-content" rows="20">{{ fields.content }}</textarea>
+    </div>
+</div>

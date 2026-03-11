@@ -1,0 +1,27 @@
+<div class="form-container">
+    <div class="form-group fixed-width-xxl">
+        <label for="delay">Appare dopo</label>
+        <div class="input-group">
+            <input name="popup-delay" id="popup-delay" type="number" class="form-control" value="{{ fields.delay }}" />
+            <span class="input-group-addon">secondi</span>
+        </div>
+    </div>
+
+    <div class="form-group fixed-width-xxl">
+        <label for="expire">Scompare dopo</label>
+        <div class="input-group">
+            <input name="popup-expire" id="popup-expire" type="number" class="form-control" value="{{ fields.delay }}" />
+            <span class="input-group-addon">secondi</span>
+        </div>
+    </div>
+
+    <div class="form-group fixed-width-xxl">
+        <label for="expire">Data attivazione</label>
+        <input name="popup-date_start" id="popup-date_start" type="datetime-local" class="form-control" value="{{ fields.date_start }}" />
+    </div>
+
+    <div class="form-group fixed-width-xxl">
+        <label for="expire">Data disattivazione</label>
+        <input name="popup-date_end" id="popup-date_end" type="datetime-local" class="form-control" value="{{ fields.date_end }}" />
+    </div>
+</div>

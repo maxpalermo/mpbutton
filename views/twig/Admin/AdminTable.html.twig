@@ -1,0 +1,67 @@
+<div class="panel">
+    <div class="panel-heading">
+        <span class="material-icons">smart_button</span>
+        <span>Elenco Popup</span>
+    </div>
+    <div class="panel-body">
+        <table id="table-buttons"></table>
+    </div>
+    <div class="panel-footer"></div>
+</div>
+
+<link rel="stylesheet" href="{{ asset('js/bs-table/bootstrap-table.min.css') }}" />
+<link rel="stylesheet" href="{{ asset('js/bs-table/extensions/sticky-header/bootstrap-table-sticky-header.min.css') }}" />
+<link rel="stylesheet" href="{{ asset('js/bs-table/extensions/filter-control/bootstrap-table-filter-control.min.css') }}" />
+
+<script src="{{ asset('js/bs-table/bootstrap-table.min.js') }}"></script>
+<script src="{{ asset('js/bs-table/locale/bootstrap-table-it-IT.min.js') }}"></script>
+<script src="{{ asset('js/bs-table/extensions/sticky-header/bootstrap-table-sticky-header.min.js') }}"></script>
+<script src="{{ asset('js/bs-table/extensions/filter-control/bootstrap-table-filter-control.min.js') }}"></script>
+<script src="{{ asset('js/BsTableMpButton.js') }}"></script>
+
+<script>
+    async function deleteButton(id) {
+        if (!confirm("Eliminare l'elemento selezionato?")) {
+            return false;
+        }
+        const endpoint = "{{ endpoint | raw }}";
+        const formData = new FormData();
+        formData.append("ajax", 1);
+        formData.append("action", "delete");
+        formData.append("id", String(id));
+
+        const response = await fetch(endpoint, {
+            method: "post",
+            body: formData
+        });
+        
+        if (!response.ok) {
+            showErrorMessage("Errore nella chiata API [editButton]");
+            return false;
+        }
+
+        const data = await response.json();
+        if (data.success) {
+            $("#table-buttons").bootstrapTable("refresh");
+            showNoticeMessage("Elemento eliminato.");
+            return;
+        }
+
+        showErrorMessage(data.error);
+    }
+
+    function editButton(id) {
+        const endpoint = "{{ endpoint | raw }}";
+        const url = new URL(endpoint, window.location.origin);
+        url.searchParams.set("action", "edit");
+        url.searchParams.set("id", String(id));
+        window.location.href = url.toString();
+    }
+
+    document.addEventListener("DOMContentLoaded", async (e) => {
+        const tableId = "table-buttons";
+        const endpoint = "{{ endpoint | raw }}";
+
+        const bsTable = new BsTableMpButton(tableId, endpoint);
+    });
+</script>
